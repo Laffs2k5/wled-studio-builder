@@ -1,4 +1,4 @@
-# wled-studio
+# wled-studio-builder
 
 Tooling for building **verifiable custom WLED firmware**: reproduce a vendor's published WLED build
 byte for byte, then add your own effects, and prove that nothing else changed before anything is
@@ -7,6 +7,9 @@ flashed.
 **Status: early work in progress.** The first vendor image, QuinLED's Dig-Next-2 build of WLED
 16.0.1, is reproduced: identical in every byte of code and data, apart from one embedded hash of
 the ELF file ([docs/reproductions.md](docs/reproductions.md)).
+
+It is the firmware half of **wled-studio**; the web app (looks, effects, live preview) is a
+separate repository that runs this builder as a service.
 
 This repository contains no WLED source code. The build fetches WLED, the vendor's build file and
 the usermods from their upstream repositories at pinned commits.
