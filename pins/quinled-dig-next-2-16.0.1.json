@@ -1,0 +1,29 @@
+{
+  "name": "quinled-dig-next-2-16.0.1",
+  "description": "QuinLED's published WLED 16.0.1 build for the Dig-Next-2, as released 2026-10-27 (with PowerManager)",
+  "wled": {
+    "repo": "https://github.com/wled/WLED",
+    "ref": "v16.0.1",
+    "commit": "29b389df1c1aaec6ff53aea742d17063b985906c"
+  },
+  "override": {
+    "repo": "https://github.com/intermittech/QuinLED-Firmware",
+    "commit": "b01544302c48468ac24edddebeb5db50323b65f9",
+    "path": "platformio_override.ini",
+    "env": "dig-next-2"
+  },
+  "pins": {
+    "https://github.com/intermittech/wled-usermod-powermanager.git": "c7d92255a8c5106ac9abb9ab504967a287f36510"
+  },
+  "web_build_time": 1783528886,
+  "reference": {
+    "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Next-2.bin",
+    "sha256": "f6a2b27525acffde78d16ac48dd88c20f777f3763e11ada5ac99494d7f5aa610",
+    "size": 1334784
+  },
+  "notes": [
+    "web_build_time: WLED's UI build stamps WEB_BUILD_TIME (tools/cdata.js). QuinLED's value was read from a device's HTTP ETag and appears exactly once in the reference image.",
+    "The PowerManager pin is v1.3.0, the newest tag before the reference was built; the override fetches the default branch unpinned.",
+    "The reference was built on Windows: its newlib strings carry HOST-x86_64-w64-mingw32."
+  ]
+}
