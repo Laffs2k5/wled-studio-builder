@@ -9,8 +9,17 @@ the `matrix` workflow rebuilds all of them on Windows and x86-64 Linux.
 
 | Board (target) | Windows (vendor's host OS) | x86-64 Linux |
 |---|---|---|
-| dig-next-2, dig-Uno-V3, dig-Uno-V3-AEplus, dig-Quad-V3, dig-Quad-V3-AEplus, dig-Octa_32-8L, dig-Octa_32-8L-Temp, dig2go, an_penta_deca, an_penta_plus, an_penta_mini (11) | **matches the vendor image** (GitHub's Windows runner, 2026-11-23; same pins for all) | recorded for 6; the other 5 need the usermod case fix (below) |
-| dig-Octa-V4, dig-Quad-V4, dig-Uno-V4 (3) | 144 bytes short with the release-wide pins: these envs were added on 2026-10-27, so their cached QuickESPNow is the newer commit; pinned per target, to verify | to record |
+| dig-next-2, dig-Uno-V3, dig-Uno-V3-AEplus, dig-Quad-V3, dig-Quad-V3-AEplus, dig-Octa_32-8L, dig-Octa_32-8L-Temp, dig2go, an_penta_deca, an_penta_plus, an_penta_mini (11) | **matches the vendor image** (GitHub's Windows runner, two matrix runs; same pins for all) | recorded for all 11 |
+| dig-Uno-V4 | **matches** (2026-11-23, locally; with the V4 QuickESPNow pin and `origin_remote: false`) | to record |
+| dig-Octa-V4, dig-Quad-V4 | same fix as dig-Uno-V4; to verify by the matrix | to record |
+
+**The V4 boards took two more findings:**
+- their envs were added on 2026-10-27, so the vendor's cached QuickESPNow is the newer commit
+  (pinned per target);
+- they don't set `WLED_REPO`, so WLED's build stamps it from the checkout's `origin` remote. The
+  vendor's tree had no GitHub origin, so its images say `unknown`; ours said `wled/WLED`, 2 bytes
+  longer, shifting everything after it. `checkout.origin_remote: false` names the remote
+  `upstream` instead.
 
 **Case-sensitivity:** QuinLED's override names some usermods in lowercase (`temperature`,
 `internal_temperature_v2`) where WLED's folders are `Temperature` and `Internal_Temperature_v2`.

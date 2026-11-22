@@ -19,7 +19,8 @@
   "web_build_time": 1783528886,
   "gzip_os": 10,
   "checkout": {
-    "autocrlf": "false"
+    "autocrlf": "false",
+    "origin_remote": false
   },
   "targets": {
     "an_penta_deca": {
@@ -58,6 +59,14 @@
           "seen": [
             "2026-11-23 GitHub windows-latest (matrix)"
           ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "ec9d9982c8ab9dc4ee2c43c90fe537e89666bf14d22b4b425ae68ce72b8029d5",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ],
+          "notes": "built with the usermod case fix: internal_temperature_v2 -> Internal_Temperature_v2"
         }
       }
     },
@@ -154,6 +163,14 @@
           "seen": [
             "2026-11-23 GitHub windows-latest (matrix)"
           ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "4db16ce7b58901f9ec247854d1930a513f515feea97793ad23d8d3e91652ef55",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ],
+          "notes": "built with the usermod case fix: temperature -> Temperature"
         }
       }
     },
@@ -170,6 +187,14 @@
           "seen": [
             "2026-11-23 GitHub windows-latest (matrix)"
           ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "a614226bacaffc0fda006664e05ebdc7f1ad812b190b8055ea1500862c468e40",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ],
+          "notes": "built with the usermod case fix: temperature -> Temperature"
         }
       }
     },
@@ -198,6 +223,14 @@
             "2026-11-23 GitHub windows-latest (matrix)",
             "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)"
           ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "5915feb2894305d9033abe50ef7833f81ffa2d644746b69c38fbf85eed926c84",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ],
+          "notes": "built with the usermod case fix: temperature -> Temperature"
         }
       }
     },
@@ -214,6 +247,14 @@
           "seen": [
             "2026-11-23 GitHub windows-latest (matrix)"
           ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "b05c5f85e12c819f38db866c31313d3228b132c058c797d44b42296138a4b7b5",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ],
+          "notes": "built with the usermod case fix: temperature -> Temperature"
         }
       }
     },
@@ -223,7 +264,15 @@
         "sha256": "de5b3fc88b4602e5a0cbaadbdffbaca7dfe527fbeddee0f12f2a434b39a5c68e",
         "size": 1331600
       },
-      "verified": {},
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "6ce22921f3659fc8bc8aaf3b08577d18f26ae756340190e37a7a8339cf75f67e",
+          "seen": [
+            "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)"
+          ]
+        }
+      },
       "pins": {
         "https://github.com/blazoncek/QuickESPNow.git": "2985a4a6eb67b9f3bc07e7b6b267716ac1b0c4b9"
       }
@@ -289,6 +338,7 @@
     "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
     "gzip_os=10: the vendor built on Windows, where Node writes OS byte 10 into the web UI's gzip headers.",
     "verified: per toolchain host. normalized_sha256 is the image with its ELF hash zeroed (imgdiff.normalized), which doesn't depend on build paths. On Windows it equals the vendor image's; Linux toolchains generate slightly different code.",
-    "app_slot_bytes (dig-next-2): QuinLED's installer image for this board carries a 4 MB-style partition table even on its 8 MB flash (app0/app1 at 0x180000 each); an OTA image must fit one slot. The gate keeps 64 KiB free. Not yet checked for the other boards."
+    "app_slot_bytes (dig-next-2): QuinLED's installer image for this board carries a 4 MB-style partition table even on its 8 MB flash (app0/app1 at 0x180000 each); an OTA image must fit one slot. The gate keeps 64 KiB free. Not yet checked for the other boards.",
+    "checkout.origin_remote=false: WLED's build stamps WLED_REPO from the checkout's origin remote unless the env defines it. The V4 envs don't, and the vendor's tree had no GitHub origin, so their images say \"unknown\" (ours said \"wled/WLED\", 2 bytes longer, shifting the rest). Envs that set WLED_REPO through build_flags_quinled are unaffected."
   ]
 }

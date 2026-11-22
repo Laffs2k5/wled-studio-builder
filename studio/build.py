@@ -67,22 +67,32 @@ def tool_version(cmd: list[str]) -> str:
         return f"unavailable ({e.__class__.__name__})"
 
 
-def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None) -> None:
+def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None, origin_remote: bool = True) -> None:
     """Clone (or reuse) dest at exactly `commit`, with a clean tree.
 
     autocrlf: None keeps the host's git default (Git for Windows ships `true`);
     "true"/"false"/"input" sets it for this checkout. Line endings in WLED's web UI
     sources end up inside the firmware, so this is a build input.
+
+    origin_remote: WLED's build stamps WLED_REPO from the checkout's "origin" remote
+    (pio-scripts/set_metadata.py) unless the env defines it. A vendor tree without a
+    GitHub origin gets "unknown"; with origin_remote=False the remote is named
+    "upstream", so the stamp is "unknown" here too.
     """
+    remote = "origin" if origin_remote else "upstream"
     if not (dest / ".git").exists():
         dest.mkdir(parents=True, exist_ok=True)
         run(["git", "init", "-q"], cwd=dest)
-        run(["git", "remote", "add", "origin", repo], cwd=dest)
+        run(["git", "remote", "add", remote, repo], cwd=dest)
+    remotes = run(["git", "remote"], cwd=dest, capture=True).split()
+    if remote not in remotes:
+        old = "upstream" if remote == "origin" else "origin"
+        run(["git", "remote", "rename", old, remote], cwd=dest)
     if autocrlf is not None:
         run(["git", "config", "core.autocrlf", autocrlf], cwd=dest)
         # renormalise the working tree for the new setting
         run(["git", "rm", "-q", "--cached", "-r", "--ignore-unmatch", "."], cwd=dest)
-    run(["git", "fetch", "-q", "--depth", "1", "origin", commit], cwd=dest)
+    run(["git", "fetch", "-q", "--depth", "1", remote, commit], cwd=dest)
     run(["git", "-c", "advice.detachedHead=false", "checkout", "-q", "--force", commit], cwd=dest)
     run(["git", "clean", "-q", "-fdx", "-e", ".pio", "-e", "node_modules"], cwd=dest)
     head = run(["git", "rev-parse", "HEAD"], cwd=dest, capture=True)
@@ -317,7 +327,8 @@ def main() -> int:
     # 1. WLED at the pinned commit
     wled = work / "wled"
     autocrlf = args.autocrlf or pins.get("checkout", {}).get("autocrlf")
-    checkout(pins["wled"]["repo"], pins["wled"]["commit"], wled, autocrlf)
+    checkout(pins["wled"]["repo"], pins["wled"]["commit"], wled, autocrlf,
+             pins.get("checkout", {}).get("origin_remote", True))
 
     # 2. the vendor's override at its pinned commit, with unpinned usermods pinned
     ov = pins["override"]
