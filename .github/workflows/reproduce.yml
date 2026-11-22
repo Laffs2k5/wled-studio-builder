@@ -37,7 +37,13 @@ jobs:
         run: python -m pip install platformio==6.2.0
       - name: Build and compare
         shell: bash
-        run: python studio/build.py "${{ inputs.pins || 'pins/quinled-dig-next-2-16.0.1.json' }}" --out out/result
+        # A short work path on Windows: the compiler command lines carry many
+        # include paths and exceed Windows' limit under D:\a\<repo>\<repo>\...
+        # ("CreateProcess: No such file or directory").
+        run: |
+          work=work
+          if [ "$RUNNER_OS" = "Windows" ]; then work="C:/w"; fi
+          python studio/build.py "${{ inputs.pins || 'pins/quinled-dig-next-2-16.0.1.json' }}" --work "$work" --out out/result
       - name: Report
         if: always()
         shell: bash
