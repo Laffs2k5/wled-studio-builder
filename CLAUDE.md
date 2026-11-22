@@ -1,4 +1,4 @@
-# CLAUDE.md
+# CLAUDE.md (wled-studio-builder)
 
 Guidance for Claude Code in this repository. **Claude maintains this file**: when a convention,
 gotcha or the status changes, update it in the same session, as its own commit.
@@ -7,7 +7,8 @@ gotcha or the status changes, update it in the same session, as its own commit.
 
 Tooling for **verifiable custom WLED firmware**: reproduce a vendor's published WLED build byte for
 byte, then add your own effects, and prove that nothing else changed before anything is flashed.
-Planned to go public. See [README.md](README.md) and [docs/](docs/).
+Planned to go public. See [README.md](README.md) and [docs/](docs/). The web app that uses it is
+the sibling repo `wled-studio`.
 
 ## Keep it publishable
 
@@ -21,9 +22,9 @@ Planned to go public. See [README.md](README.md) and [docs/](docs/).
 
 ## Git
 
-- Work lands as a **draft PR** from a branch; the owner reviews and merges. Never merge, never
-  squash.
-- Atomic conventional commits; the body explains *why*. Rebase on `main`, no merge commits.
+- **Push directly to `main`** (owner, 2026-11-23). Open a PR only when CI on a branch is needed
+  before landing; then fast-forward `main` to it. Never squash, never merge commits.
+- Atomic conventional commits; the body explains *why*.
 - AI config (`CLAUDE.md`, `.claude/`) goes in its **own** commit.
 
 ## Building
