@@ -50,4 +50,10 @@ Planned to go public. See [README.md](README.md) and [docs/](docs/).
   web UI sources end up inside the image. `build.py --autocrlf` sets it per checkout.
 - **Usermods fetched by URL float** unless pinned. The pins file maps such URLs to commits, and
   `build.py` rewrites them to `url#commit`.
+- **Windows needs a short work path.** The compiler command lines carry dozens of include paths;
+  under a long folder they exceed Windows' limit and fail as "CreateProcess: No such file or
+  directory". Use something like `--work C:\w`.
+- **External usermods must be named `wled-…`** in their `library.json` (or be listed by a
+  predictable URL name), or WLED's build doesn't treat them as modules and `wled.h` isn't found.
+  WLED's own `mode_static()` isn't exported; an effect needs its own fallback.
 - PowerShell `*>` redirection writes UTF-16 logs; read them with `iconv -f utf-16`.
