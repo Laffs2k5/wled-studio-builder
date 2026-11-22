@@ -16,6 +16,13 @@ import service  # noqa: E402
 
 def fake_runner(passed=True):
     def run(cfg, job, job_dir):
+        if job.get("kind") == "preview":
+            (job_dir / "build.log").write_text("compiled")
+            if passed:
+                (job_dir / "preview").mkdir()
+                (job_dir / "preview" / "preview.mjs").write_text("export default 1;")
+                (job_dir / "preview" / "preview.wasm").write_bytes(b"\0asm")
+            return 0 if passed else 1
         (job_dir / "build.log").write_text("building...\nGATE " + ("PASSED" if passed else "FAILED"))
         (job_dir / "gate-report.json").write_text(json.dumps({"passed": passed}))
         if passed:
@@ -109,6 +116,26 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.call("GET", "/jobs/" + "0" * 32)[0], 404)
         self.assertEqual(self.call("GET", "/nothing")[0], 404)
         self.assertEqual(self.call("POST", "/elsewhere", {})[0], 404)
+
+    def test_preview_job(self):
+        self.start()
+        status, job = self.call("POST", "/previews", {"usermods": ["my_fx"]})
+        self.assertEqual(status, 202)
+        self.assertEqual(job["kind"], "preview")
+        job = self.wait(job["id"])
+        self.assertEqual(job["state"], "passed")
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/preview/preview.wasm"), (200, b"\0asm"))
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/preview/preview.mjs")[0], 200)
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/preview/other.js")[0], 404)
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/firmware.bin")[0], 409)  # a preview has no firmware
+        for bad in ({"usermods": ["../x"]}, {"usermods": []}, {"usermods": ["my_fx"], "pins": "p.json"}):
+            self.assertEqual(self.call("POST", "/previews", bad)[0], 400)
+
+    def test_gate_job_has_no_preview(self):
+        self.start()
+        _, job = self.call("POST", "/jobs", {"pins": "p.json", "target": "board", "usermods": ["my_fx"]})
+        job = self.wait(job["id"])
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/preview/preview.mjs")[0], 409)
 
     def test_token(self):
         self.start(token="t0k3n")

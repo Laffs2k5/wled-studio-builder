@@ -15,6 +15,10 @@ jobs that passed the gate, the firmware image.
   GET  /jobs/<id>             one job: state (queued, running, passed, failed) and gate report
   GET  /jobs/<id>/log         the job's build log (last 200 kB)
   GET  /jobs/<id>/firmware.bin  only if the job passed the gate
+  POST /previews              {"usermods": ["name", ...]}: compile them to WebAssembly for the
+                              browser preview (preview/); Emscripten is installed into the work
+                              volume on first use (EMSDK_VERSION)
+  GET  /jobs/<id>/preview/preview.mjs, .../preview.wasm   a compiled preview
 
 Settings (environment): WLED_STUDIO_PINS_DIR, WLED_STUDIO_USERMODS_DIRS (colon-
 separated; default /effects and the bundled examples), WLED_STUDIO_JOBS_DIR
@@ -44,6 +48,8 @@ PINS_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,80}\.json$")
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 TARGET_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+EMSDK_VERSION = os.environ.get("EMSDK_VERSION", "7.0.1")
+PREVIEW_FILES = {"preview.mjs": "text/javascript; charset=utf-8", "preview.wasm": "application/wasm"}
 MAX_BODY = 64 * 1024
 LOG_TAIL = 200 * 1024
 
@@ -108,19 +114,41 @@ def validate_job(cfg: Config, body: object) -> dict:
     return {"pins": pins, "target": target, "usermods": usermods, "usermod_paths": [str(p) for p in paths]}
 
 
-def run_gate(cfg: Config, job: dict, job_dir: Path) -> int:  # pragma: no cover - runs real builds
-    cmd = [sys.executable, str(HERE / "gate.py"), str(cfg.pins_dir / job["pins"]), "--target", job["target"],
-           "--work", str(cfg.work), "--out", str(job_dir)]
-    for p in job["usermod_paths"]:
-        cmd += ["--usermod", p]
+def validate_preview(cfg: Config, body: object) -> dict:
+    if not isinstance(body, dict) or set(body) - {"usermods"}:
+        raise BadRequest("expected {usermods}")
+    usermods = body.get("usermods")
+    if not isinstance(usermods, list) or not 1 <= len(usermods) <= 8 or not all(isinstance(u, str) for u in usermods):
+        raise BadRequest("usermods: a list of 1-8 names")
+    paths = [find_usermod(cfg, u) for u in usermods]
+    return {"kind": "preview", "usermods": usermods, "usermod_paths": [str(p) for p in paths]}
+
+
+def run_job(cfg: Config, job: dict, job_dir: Path) -> int:  # pragma: no cover - runs real builds
     with open(job_dir / "build.log", "wb") as log:
+        if job.get("kind") == "preview":
+            emsdk = cfg.work / "emsdk"
+            script = (
+                "set -e\n"
+                f"if [ ! -x '{emsdk}/emsdk' ]; then git clone -q --depth 1 https://github.com/emscripten-core/emsdk.git '{emsdk}'; fi\n"
+                f"'{emsdk}/emsdk' install {EMSDK_VERSION} >/dev/null\n"
+                f"'{emsdk}/emsdk' activate {EMSDK_VERSION} >/dev/null\n"
+                f". '{emsdk}/emsdk_env.sh' >/dev/null 2>&1\n"
+                f"'{HERE.parent / 'preview' / 'build.sh'}' '{job_dir / 'preview'}' "
+                + " ".join(f"'{p}'" for p in job["usermod_paths"]) + "\n"
+            )
+            return subprocess.run(["bash", "-c", script], stdout=log, stderr=subprocess.STDOUT).returncode
+        cmd = [sys.executable, str(HERE / "gate.py"), str(cfg.pins_dir / job["pins"]), "--target", job["target"],
+               "--work", str(cfg.work), "--out", str(job_dir)]
+        for p in job["usermod_paths"]:
+            cmd += ["--usermod", p]
         return subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT).returncode
 
 
 class JobQueue:
     """Jobs on disk (jobs_dir/<id>/job.json), run one at a time by a worker thread."""
 
-    def __init__(self, cfg: Config, runner=run_gate):
+    def __init__(self, cfg: Config, runner=run_job):
         self.cfg, self.runner = cfg, runner
         self.q: queue.Queue[str] = queue.Queue()
         self.lock = threading.Lock()
@@ -161,7 +189,7 @@ class JobQueue:
     def submit(self, spec: dict) -> dict:
         jid = uuid.uuid4().hex
         self._path(jid).mkdir(parents=True)
-        job = {"id": jid, "state": "queued", "created": time.time(), **spec}
+        job = {"id": jid, "state": "queued", "created": time.time(), "kind": "gate", **spec}
         self._save(jid, job)
         self.q.put(jid)
         return job
@@ -234,10 +262,16 @@ def make_handler(cfg: Config, jobs: JobQueue):
                     log = jobs._path(parts[1]) / "build.log"
                     data = log.read_bytes()[-LOG_TAIL:] if log.exists() else b""
                     return self._send(200, data, "text/plain; charset=utf-8")
+                if len(parts) == 4 and parts[0] == "jobs" and parts[2] == "preview" and parts[3] in PREVIEW_FILES:
+                    job = jobs.get(parts[1])
+                    f = jobs._path(parts[1]) / "preview" / parts[3]
+                    if job.get("kind") != "preview" or job["state"] != "passed" or not f.exists():
+                        return self._send(409, {"detail": "no compiled preview for this job"})
+                    return self._send(200, f.read_bytes(), PREVIEW_FILES[parts[3]])
                 if len(parts) == 3 and parts[0] == "jobs" and parts[2] == "firmware.bin":
                     job = jobs.get(parts[1])
                     fw = jobs._path(parts[1]) / "custom" / "firmware.bin"
-                    if job["state"] != "passed" or not fw.exists():
+                    if job.get("kind", "gate") != "gate" or job["state"] != "passed" or not fw.exists():
                         return self._send(409, {"detail": "only jobs that passed the gate have firmware"})
                     return self._send(200, fw.read_bytes(), "application/octet-stream")
             except KeyError:
@@ -247,13 +281,14 @@ def make_handler(cfg: Config, jobs: JobQueue):
         def do_POST(self):
             if not self._authorised():
                 return self._send(401, {"detail": "missing or wrong token"})
-            if self.path != "/jobs":
+            if self.path not in ("/jobs", "/previews"):
                 return self._send(404, {"detail": "not found"})
             length = self.headers.get("Content-Length", "")
             if not length.isdigit() or int(length) > MAX_BODY:
                 return self._send(413, {"detail": "body too large or missing length"})
             try:
-                spec = validate_job(cfg, json.loads(self.rfile.read(int(length)) or b"null"))
+                body = json.loads(self.rfile.read(int(length)) or b"null")
+                spec = validate_job(cfg, body) if self.path == "/jobs" else validate_preview(cfg, body)
             except (BadRequest, json.JSONDecodeError) as e:
                 return self._send(400, {"detail": str(e)})
             job = jobs.submit(spec)
@@ -263,7 +298,7 @@ def make_handler(cfg: Config, jobs: JobQueue):
     return Handler
 
 
-def serve(cfg: Config | None = None, runner=run_gate) -> ThreadingHTTPServer:
+def serve(cfg: Config | None = None, runner=run_job) -> ThreadingHTTPServer:
     cfg = cfg or Config()
     server = ThreadingHTTPServer(cfg.bind, make_handler(cfg, JobQueue(cfg, runner)))
     return server

@@ -10,9 +10,9 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", ".github/workflows/image.yml"]
+    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", "preview/**", ".github/workflows/image.yml"]
   pull_request:
-    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", ".github/workflows/image.yml"]
+    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", "preview/**", ".github/workflows/image.yml"]
   workflow_dispatch:
 
 concurrency:
