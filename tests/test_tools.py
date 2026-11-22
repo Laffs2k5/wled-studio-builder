@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "studio"))
 import build  # noqa: E402
 import discover  # noqa: E402
+import gate  # noqa: E402
 import imgdiff  # noqa: E402
 import json  # noqa: E402
 
@@ -254,6 +255,73 @@ class UsermodCaseTests(unittest.TestCase):
     def test_missing_env_or_dir(self):
         self.assertEqual(build.fix_usermod_case("x\n", "a", self.dir), ("x\n", []))
         self.assertEqual(build.fix_usermod_case("x\n", "a", self.dir / "nope"), ("x\n", []))
+
+
+class GateTests(unittest.TestCase):
+    """The gate's logic, with a fake builder (no compiling)."""
+
+    STOCK = {"core/a.o": "1", "core/b.o": "2", "lib.a:x.o": "3"}
+
+    def run_gate(self, stock_check=None, custom_objects=None, custom_size=1_000_000, slot=1_572_864,
+                 fail_stock=False):
+        tmp = Path(tempfile.mkdtemp())
+        pins = tmp / "pins.json"
+        pins.write_text(json.dumps({"name": "p", "app_slot_bytes": slot, "targets": {"t": {}}}))
+        um = tmp / "my_fx"
+        um.mkdir()
+        custom_objects = custom_objects if custom_objects is not None else {**self.STOCK, "my_fx/fx.cpp.o": "9"}
+
+        def builder(pins_path, target, work, out, usermods, check):
+            if fail_stock and not usermods:
+                return 1
+            out.mkdir(parents=True, exist_ok=True)
+            objects = custom_objects if usermods else self.STOCK
+            report = {"check": stock_check or [], "normalized_sha256": "n", "firmware_size": custom_size if usermods
+                      else 900_000, "firmware_sha256": "s", "toolchain_host": "linux-x86_64"}
+            (out / "build-report.json").write_text(json.dumps(report))
+            (out / "objects.json").write_text(json.dumps(objects))
+            return 0
+
+        rc = gate.main([str(pins), "--target", "t", "--usermod", str(um), "--out", str(tmp / "out")], builder=builder)
+        return rc, json.loads((tmp / "out" / "gate-report.json").read_text())
+
+    def test_passes(self):
+        rc, rep = self.run_gate()
+        self.assertEqual(rc, 0)
+        self.assertTrue(rep["passed"])
+        self.assertEqual(rep["objects"]["added_from_usermods"], ["my_fx/fx.cpp.o"])
+        self.assertEqual(rep["firmware"], "custom/firmware.bin")
+
+    def test_stock_must_match(self):
+        rc, rep = self.run_gate(stock_check=["no verified result"])
+        self.assertEqual(rc, 1)
+        self.assertFalse(rep["checks"]["stock_matches_verified"])
+
+    def test_changed_core_object_fails(self):
+        rc, rep = self.run_gate(custom_objects={**self.STOCK, "core/a.o": "X", "my_fx/fx.cpp.o": "9"})
+        self.assertEqual(rc, 1)
+        self.assertEqual(rep["objects"]["unexpected"], ["core/a.o"])
+
+    def test_removed_object_fails(self):
+        objs = {k: v for k, v in self.STOCK.items() if k != "core/b.o"}
+        rc, rep = self.run_gate(custom_objects={**objs, "my_fx/fx.cpp.o": "9"})
+        self.assertEqual(rc, 1)
+        self.assertEqual(rep["objects"]["unexpected"], ["core/b.o"])
+
+    def test_usermod_must_add_something(self):
+        rc, rep = self.run_gate(custom_objects=dict(self.STOCK))
+        self.assertEqual(rc, 1)
+        self.assertFalse(rep["checks"]["only_usermod_objects_changed"])
+
+    def test_size_margin(self):
+        rc, rep = self.run_gate(custom_size=1_572_864 - 1000)
+        self.assertEqual(rc, 1)
+        self.assertFalse(rep["checks"]["fits_app_slot"])
+
+    def test_stock_build_failure(self):
+        rc, rep = self.run_gate(fail_stock=True)
+        self.assertEqual(rc, 1)
+        self.assertIn("stock build failed", rep["error"])
 
 
 class PinTests(unittest.TestCase):

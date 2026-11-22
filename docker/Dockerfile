@@ -41,7 +41,8 @@ RUN set -eu; \
     rm -f "$f"; \
     node --version
 
-RUN useradd --create-home --uid 10001 builder
+RUN useradd --create-home --uid 10001 builder \
+ && mkdir -p /work /out && chown builder:builder /work /out
 USER builder
 WORKDIR /home/builder
 
@@ -56,8 +57,11 @@ ENV NPM_CONFIG_IGNORE_SCRIPTS=true \
 COPY --chown=builder:builder pins/ /home/builder/studio-src/pins/
 COPY --chown=builder:builder studio/ /home/builder/studio-src/studio/
 COPY --chown=builder:builder tests/ /home/builder/studio-src/tests/
+COPY --chown=builder:builder examples/ /home/builder/studio-src/examples/
 
 # Both volumes must be writable by uid 10001 (chown them on the host first).
+# The job service for the web app: --entrypoint /home/builder/venv/bin/python
+#   with the argument /home/builder/studio-src/studio/service.py (port 8090).
 # /work holds the WLED checkout and PlatformIO's packages (a volume, reused
 # between runs); /out receives firmware.bin, firmware.elf and build-report.json.
 VOLUME ["/work", "/out"]

@@ -254,7 +254,8 @@
           ],
           "known_differences": "toolchain newlib paths (no HOST-<triple>/ part, 80 bytes); register allocation in dmx_receive; two prebuilt libstdc++ functions"
         }
-      }
+      },
+      "app_slot_bytes": 1572864
     },
     "dig2go": {
       "reference": {
@@ -287,6 +288,7 @@
     "QuickESPNow: WLED fetches the optional-debug branch, unpinned. PlatformIO caches it per env in the vendor's build tree, so the commit differs per target: the envs that existed in July 2026 have 193e991 (2025-03-17, release-wide pin); the V4 boards, added 2026-10-27, have 2985a4a (2026-09-27), which adds 152 bytes of code.",
     "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
     "gzip_os=10: the vendor built on Windows, where Node writes OS byte 10 into the web UI's gzip headers.",
-    "verified: per toolchain host. normalized_sha256 is the image with its ELF hash zeroed (imgdiff.normalized), which doesn't depend on build paths. On Windows it equals the vendor image's; Linux toolchains generate slightly different code."
+    "verified: per toolchain host. normalized_sha256 is the image with its ELF hash zeroed (imgdiff.normalized), which doesn't depend on build paths. On Windows it equals the vendor image's; Linux toolchains generate slightly different code.",
+    "app_slot_bytes (dig-next-2): QuinLED's installer image for this board carries a 4 MB-style partition table even on its 8 MB flash (app0/app1 at 0x180000 each); an OTA image must fit one slot. The gate keeps 64 KiB free. Not yet checked for the other boards."
   ]
 }
