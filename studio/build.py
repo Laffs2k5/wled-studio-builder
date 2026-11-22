@@ -125,7 +125,7 @@ def main() -> int:
     env = os.environ.copy()
     env["WLED_STUDIO_WEB_BUILD_TIME"] = str(pins["web_build_time"])
     fixtime = (REPO_ROOT / "studio" / "fixtime.js").resolve()
-    env["NODE_OPTIONS"] = (env.get("NODE_OPTIONS", "") + f' --require "{fixtime}"').strip()
+    env["NODE_OPTIONS"] = (env.get("NODE_OPTIONS", "") + f' --require "{fixtime.as_posix()}"').strip()
     env.setdefault("PLATFORMIO_CORE_DIR", str(work / "pio-core"))
 
     # 4. build
