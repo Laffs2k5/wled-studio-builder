@@ -30,7 +30,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None, capture: bool = False) -> str:
     print("+ " + " ".join(cmd), flush=True)
     res = subprocess.run(cmd, cwd=cwd, env=env, check=True,
-                         stdout=subprocess.PIPE if capture else None, text=True)
+                         stdout=subprocess.PIPE if capture else None, text=True,
+                         encoding="utf-8" if capture else None, errors="replace" if capture else None)
     return res.stdout.strip() if capture else ""
 
 
@@ -215,6 +216,8 @@ def main() -> int:
     fixtime = (REPO_ROOT / "studio" / "fixtime.js").resolve()
     env["NODE_OPTIONS"] = (env.get("NODE_OPTIONS", "") + f' --require "{fixtime.as_posix()}"').strip()
     env.setdefault("PLATFORMIO_CORE_DIR", str(work / "pio-core"))
+    # WLED's UI build needs no npm install scripts (66 packages would run theirs)
+    env.setdefault("NPM_CONFIG_IGNORE_SCRIPTS", "true")
 
     # 4. build, with libraries resolved afresh (a cached branch checkout would hide the pins)
     shutil.rmtree(wled / ".pio" / "libdeps" / ov["env"], ignore_errors=True)
@@ -226,6 +229,14 @@ def main() -> int:
     for f in ("firmware.bin", "firmware.elf"):
         shutil.copy2(build_dir / f, out / f)
     (out / "objects.json").write_text(json.dumps(object_manifest(build_dir), indent=1) + "\n")
+    # the versions PlatformIO resolved, including ranges that can still float
+    # (UTF-8: the listing draws a tree, which Windows' default console encoding can't encode)
+    try:
+        pkgs = run([sys.executable, "-m", "platformio", "pkg", "list", "-e", ov["env"], "-d", str(wled)],
+                   env={**env, "PYTHONIOENCODING": "utf-8"}, capture=True)
+        (out / "packages.txt").write_text(pkgs + "\n", encoding="utf-8")
+    except subprocess.CalledProcessError as e:
+        print(f"warning: could not list packages ({e})", flush=True)
 
     # 5. compare with the vendor's image
     ref = pins.get("reference")
