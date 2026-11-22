@@ -12,6 +12,9 @@ differences:
   info contains the build directory;
 - the image checksum and the appended image hash, which follow from it.
 
+**Independently confirmed** on GitHub's native x86-64 Windows runner (`reproduce` workflow):
+`identical_except_elf_sha256: true`.
+
 Proof: copying QuinLED's ELF hash into our image and recomputing the checksum and hash gives
 exactly QuinLED's sha256 (`imgdiff.py --transplant-elf-sha`; `build.py` reports it as
 `identical_except_elf_sha256`).
