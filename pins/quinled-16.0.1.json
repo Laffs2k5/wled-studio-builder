@@ -28,7 +28,22 @@
         "sha256": "a26a411af56654ae32ad1b85ec8d7d02aa58bb8707ea1eadc6e3d551d940a96d",
         "size": 1275920
       },
-      "verified": {}
+      "verified": {
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "a2be6aef42965ab2881fca374f93bb461c58f79670e7d717ce9edfa44c9ae5fe",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        },
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "5aedfe860f6d11a6f2f0bfb7b5e35db74281c1383a8eabd7fcb39efb215c5d13",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     },
     "an_penta_mini": {
       "reference": {
@@ -36,7 +51,15 @@
         "sha256": "47e97e7ff71dbf0c57754b1e2f8fe71b6df0943d02112fe0c8d31d475240bce2",
         "size": 1236576
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "cafe529d85cd9bbe899e5c9f29fcf2ee77eaa1b11edead938b5af3c1817045b5",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     },
     "an_penta_plus": {
       "reference": {
@@ -44,7 +67,22 @@
         "sha256": "27556139408713ba9f4513c24a894e48b797fab1ade94c2c40b57a95a51cd518",
         "size": 1295360
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "87a7d036783caeb58ac1fa5e7646e1a8e9379085c02375337bffa238579975f2",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "4ae0388f35945f73d457eb89860f4c748c75a694b0d7df26f8c87e348199a80b",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Octa-V4": {
       "reference": {
@@ -52,7 +90,10 @@
         "sha256": "e5625d01cc4fe349e1de858fd048aae1da13599a0fc901acc0e0b673d983a8df",
         "size": 1329760
       },
-      "verified": {}
+      "verified": {},
+      "pins": {
+        "https://github.com/blazoncek/QuickESPNow.git": "2985a4a6eb67b9f3bc07e7b6b267716ac1b0c4b9"
+      }
     },
     "dig-Octa_32-8L": {
       "reference": {
@@ -60,7 +101,22 @@
         "sha256": "7199af3f345616779aa076621f8823bfff6bdb758a15459dfd973b394bbd3447",
         "size": 1337584
       },
-      "verified": {}
+      "verified": {
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "6eda1a461a6a5a5e4c06989e6cce11283202f8f83e6d32f6f9d3de803daf8bff",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        },
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "50653b16f1f488b37f1f10316a027421890fda4b4e106d8e94a68733108b106e",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Octa_32-8L-Temp": {
       "reference": {
@@ -68,7 +124,22 @@
         "sha256": "1258bca5ac9a18194efba7efbef5e62919947fee6092a3be44e85339ce9d9468",
         "size": 1337584
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "8e4cbef50984b0c425401f350e54d26423a25bebdeed9e4e33af4d1c162cf0d7",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "917a1565b4fd71dbb4d43d243e973ef5763f36379019675d91fbda66de891864",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Quad-V3": {
       "reference": {
@@ -76,7 +147,15 @@
         "sha256": "4d0751d3e754320cb6767cb2d712bc9709faf30c9191b032c288d9d73c352f8e",
         "size": 1338848
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "cbf11ecda0c55774aff3e624fa9691bce8d6c117a4a6853de56ebfb4aaf545f5",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Quad-V3-AEplus": {
       "reference": {
@@ -84,7 +163,15 @@
         "sha256": "d8523a6323078542c5f6973f0a31349f1f378d5a31850d4407e1e297a52aff44",
         "size": 1319648
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "9aaa74373a3ee06a59dc99844bcfa461657f9788912642e30f9c259739d353fb",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Quad-V4": {
       "reference": {
@@ -92,7 +179,10 @@
         "sha256": "64fd264bcac76040521e9a1a0e5b0acd6552b1b1366d6a5c5882832009f9e722",
         "size": 1331664
       },
-      "verified": {}
+      "verified": {},
+      "pins": {
+        "https://github.com/blazoncek/QuickESPNow.git": "2985a4a6eb67b9f3bc07e7b6b267716ac1b0c4b9"
+      }
     },
     "dig-Uno-V3": {
       "reference": {
@@ -105,6 +195,7 @@
           "matches_reference": true,
           "normalized_sha256": "c3f832717ab2087ee76ffa624f20a8fcc76acc07fdff45239ea60a9846e956b3",
           "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)",
             "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)"
           ]
         }
@@ -116,7 +207,15 @@
         "sha256": "b78c92f27a373c6b06071f66b190f943623ee4e0ca6415d2b8cd369bde13f9b7",
         "size": 1319632
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "413194a28f1f126f9cc9ab91a0961f5f0636e11849f917a99c1fa229e3505fd3",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Uno-V4": {
       "reference": {
@@ -124,7 +223,10 @@
         "sha256": "de5b3fc88b4602e5a0cbaadbdffbaca7dfe527fbeddee0f12f2a434b39a5c68e",
         "size": 1331600
       },
-      "verified": {}
+      "verified": {},
+      "pins": {
+        "https://github.com/blazoncek/QuickESPNow.git": "2985a4a6eb67b9f3bc07e7b6b267716ac1b0c4b9"
+      }
     },
     "dig-next-2": {
       "reference": {
@@ -137,16 +239,18 @@
           "matches_reference": true,
           "normalized_sha256": "dfd1f11d38f9a198994512a30d5dc3c8bc3970eb0b80a5b2d16989edd73bfbce",
           "seen": [
+            "2026-11-22 GitHub windows-latest",
             "2026-11-22 Windows 11 ARM64 (x86-64 toolchain emulated)",
-            "2026-11-22 GitHub windows-latest"
+            "2026-11-23 GitHub windows-latest (matrix)"
           ]
         },
         "linux-x86_64": {
           "matches_reference": false,
           "normalized_sha256": "91f49144c53bea247e27bfc57220e8816b5a19a8d609716e56347c7905dfc3cc",
           "seen": [
+            "2026-11-22 GitHub ubuntu-latest",
             "2026-11-22 builder container on a docker host (two runs)",
-            "2026-11-22 GitHub ubuntu-latest"
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
           ],
           "known_differences": "toolchain newlib paths (no HOST-<triple>/ part, 80 bytes); register allocation in dmx_receive; two prebuilt libstdc++ functions"
         }
@@ -158,14 +262,29 @@
         "sha256": "ef135715977975c127ba308e38d8aec87185d47dd3c3fdec6a0bb9daba954ec7",
         "size": 1312480
       },
-      "verified": {}
+      "verified": {
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "7e59713c307dc580e50b5833c3780d79d76f2537e930368d68b7742c86cb8844",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        },
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "5710e246261d652404a1a69f2e2661fdaa390ace367e96b60a19977f54496a17",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      }
     }
   },
   "notes": [
     "Release-wide inputs apply to every target; a target's keys override them (its pins are merged).",
     "web_build_time: WLED's UI build stamps WEB_BUILD_TIME (tools/cdata.js). The vendor reuses its build tree, so the UI was last generated at the original 16.0.1 release (2026-07-08). Read from a device's HTTP ETag; `discover.py stamp-at` finds it from any build with the same layout.",
     "PowerManager: v1.3.0, the newest tag before the images were built; the override fetches the default branch unpinned.",
-    "QuickESPNow: WLED fetches the optional-debug branch, unpinned. PlatformIO caches it per env in the vendor's build tree, so the commit can differ per target: dig-next-2 and dig-Uno-V3 had 193e991 (2025-03-17); the branch's 2026-09-27 commits add 152 bytes of code. Targets added later (the V4 boards, 2026-10-27) may have the newer commit.",
+    "QuickESPNow: WLED fetches the optional-debug branch, unpinned. PlatformIO caches it per env in the vendor's build tree, so the commit differs per target: the envs that existed in July 2026 have 193e991 (2025-03-17, release-wide pin); the V4 boards, added 2026-10-27, have 2985a4a (2026-09-27), which adds 152 bytes of code.",
     "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
     "gzip_os=10: the vendor built on Windows, where Node writes OS byte 10 into the web UI's gzip headers.",
     "verified: per toolchain host. normalized_sha256 is the image with its ELF hash zeroed (imgdiff.normalized), which doesn't depend on build paths. On Windows it equals the vendor image's; Linux toolchains generate slightly different code."

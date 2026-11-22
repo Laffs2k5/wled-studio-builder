@@ -7,11 +7,16 @@ Vendor images reproduced with `studio/build.py`, and what it took.
 14 boards, one release. The verified results per board and toolchain host are in the pins file;
 the `matrix` workflow rebuilds all of them on Windows and x86-64 Linux.
 
-| Board (target) | Windows | x86-64 Linux |
+| Board (target) | Windows (vendor's host OS) | x86-64 Linux |
 |---|---|---|
-| dig-next-2 | matches the vendor image | recorded (`91f49144…`) |
-| dig-Uno-V3 | matches the vendor image (2026-11-23, same pins, no change to the tool) | not yet |
-| the other 12 | not yet (matrix) | not yet (matrix) |
+| dig-next-2, dig-Uno-V3, dig-Uno-V3-AEplus, dig-Quad-V3, dig-Quad-V3-AEplus, dig-Octa_32-8L, dig-Octa_32-8L-Temp, dig2go, an_penta_deca, an_penta_plus, an_penta_mini (11) | **matches the vendor image** (GitHub's Windows runner, 2026-11-23; same pins for all) | recorded for 6; the other 5 need the usermod case fix (below) |
+| dig-Octa-V4, dig-Quad-V4, dig-Uno-V4 (3) | 144 bytes short with the release-wide pins: these envs were added on 2026-10-27, so their cached QuickESPNow is the newer commit; pinned per target, to verify | to record |
+
+**Case-sensitivity:** QuinLED's override names some usermods in lowercase (`temperature`,
+`internal_temperature_v2`) where WLED's folders are `Temperature` and `Internal_Temperature_v2`.
+Windows finds them; Linux doesn't, so those 5 targets failed on Linux. `build.py` now picks the
+folder case-insensitively (the folder Windows picks) and lists each fix in the report
+(`usermod_case_fixes`).
 
 ### Dig-Next-2
 

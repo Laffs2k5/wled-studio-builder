@@ -230,6 +230,32 @@ class PinsFileTests(unittest.TestCase):
                             self.assertTrue(hex64(exp["normalized_sha256"]))
 
 
+class UsermodCaseTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        for name in ("Temperature", "audioreactive", "Internal_Temperature_v2", "multi_relay"):
+            (self.dir / name).mkdir()
+
+    def test_fixes_plain_names_only_in_the_env(self):
+        ov = ("[env:a]\ncustom_usermods = audioreactive temperature\n"
+              "  internal_temperature https://github.com/o/r.git\nbuild_flags = -D X\n"
+              "[env:b]\ncustom_usermods = temperature\n")
+        out, fixes = build.fix_usermod_case(ov, "a", self.dir)
+        self.assertIn("custom_usermods = audioreactive Temperature\n", out)
+        self.assertIn("  Internal_Temperature_v2 https://github.com/o/r.git\n", out)
+        self.assertIn("[env:b]\ncustom_usermods = temperature\n", out)  # other env untouched
+        self.assertEqual(fixes, ["temperature -> Temperature", "internal_temperature -> Internal_Temperature_v2"])
+
+    def test_no_change_when_names_exist(self):
+        ov = "[env:a]\ncustom_usermods = audioreactive multi_relay\n"
+        out, fixes = build.fix_usermod_case(ov, "a", self.dir)
+        self.assertEqual((out, fixes), (ov, []))
+
+    def test_missing_env_or_dir(self):
+        self.assertEqual(build.fix_usermod_case("x\n", "a", self.dir), ("x\n", []))
+        self.assertEqual(build.fix_usermod_case("x\n", "a", self.dir / "nope"), ("x\n", []))
+
+
 class PinTests(unittest.TestCase):
     def test_pins_replace_branch_and_bare_urls(self):
         text = ("lib_deps =\n  https://github.com/o/a.git#optional-debug\n"

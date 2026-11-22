@@ -124,6 +124,50 @@ def add_usermods(override: str, env_name: str, paths: list[Path]) -> str:
     return "\n".join(lines[:j] + extra + lines[j:]) + "\n"
 
 
+def fix_usermod_case(override: str, env_name: str, usermod_dir: Path) -> tuple[str, list[str]]:
+    """Match plain usermod names in [env:<env_name>] to WLED's folders case-insensitively.
+
+    Vendors that build on Windows can write `temperature` for WLED's `Temperature`
+    folder: Windows finds it, a case-sensitive file system doesn't. This picks
+    the folder Windows would pick, so the build is the same; returns the fixes.
+    """
+    if not usermod_dir.is_dir():
+        return override, []
+    folders = {p.name.lower(): p.name for p in usermod_dir.iterdir() if p.is_dir()}
+    lines = override.splitlines()
+    start = next((i for i, l in enumerate(lines) if l.strip() == f"[env:{env_name}]"), None)
+    if start is None:
+        return override, []
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("[")), len(lines))
+    fixes: list[str] = []
+    in_value = False
+    for i in range(start + 1, end):
+        line = lines[i]
+        if line.split("=")[0].strip() == "custom_usermods" and "=" in line:
+            key, _, value = line.partition("=")
+            in_value = True
+            prefix, tokens = key + "=", value
+        elif in_value and line[:1] in (" ", "\t") and line.strip():
+            prefix, tokens = "", line
+        else:
+            in_value = False
+            continue
+        new_tokens = []
+        for tok in re.split(r"(\s+)", tokens):
+            name = tok.strip()
+            plain = name and "://" not in name and "@" not in name and "/" not in name and "=" not in name
+            if plain and not (usermod_dir / name).is_dir():
+                for cand in (name, f"{name}_v2", f"usermod_v2_{name}"):
+                    real = folders.get(cand.lower())
+                    if real and real != cand:
+                        fixes.append(f"{name} -> {real}")
+                        tok = tok.replace(name, real)
+                        break
+            new_tokens.append(tok)
+        lines[i] = prefix + "".join(new_tokens)
+    return "\n".join(lines) + "\n", fixes
+
+
 LIB_DIR_RE = re.compile(r"^lib[0-9a-f]{3}$")
 
 
@@ -283,6 +327,7 @@ def main() -> int:
     url_pins = pins.get("pins", {})
     override, hits_ov = apply_pins(ov_src.read_text(encoding="utf-8"), url_pins)
     override = add_usermods(override, pins["env"], args.usermod)
+    override, case_fixes = fix_usermod_case(override, pins["env"], wled / "usermods")
     (wled / "platformio_override.ini").write_text(override, encoding="utf-8", newline="\n")
     (out / "platformio_override.ini").write_text(override, encoding="utf-8", newline="\n")
     # WLED's own platformio.ini may fetch branches too (e.g. QuickESPNow#optional-debug)
@@ -345,6 +390,7 @@ def main() -> int:
         "override_commit": ov["commit"],
         "env": pins["env"],
         "extra_usermods": [p.name for p in args.usermod],
+        "usermod_case_fixes": case_fixes,
         "autocrlf": run(["git", "config", "--get", "core.autocrlf"], cwd=wled, capture=True)
         if subprocess.run(["git", "config", "--get", "core.autocrlf"], cwd=wled,
                           stdout=subprocess.DEVNULL).returncode == 0 else "unset",
