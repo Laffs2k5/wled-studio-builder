@@ -1,0 +1,6 @@
+# build work trees and outputs
+/work/
+/out/
+*.pyc
+__pycache__/
+.venv/
