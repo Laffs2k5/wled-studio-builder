@@ -2,7 +2,7 @@
 
 Vendor images reproduced with `studio/build.py`, and what it took.
 
-## QuinLED Dig-Next-2, WLED 16.0.1 (pins/quinled-dig-next-2-16.0.1.json)
+## QuinLED Dig-Next-2, WLED 16.0.1 (pins/quinled-16.0.1.json)
 
 **Result (2026-11-22): identical apart from the ELF hash.** Built on Windows (ARM64, running the
 x86-64 toolchain under emulation), the image matches QuinLED's release image

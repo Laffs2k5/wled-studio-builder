@@ -1,0 +1,119 @@
+name: image
+
+# Build the builder image, test it, prove it reproduces the pinned vendor image
+# it ships with, and publish it to GitHub's container registry (ghcr.io).
+#
+#   pull requests            build + test (amd64), no publish
+#   push to main             build + test, publish :edge and :sha-<short> (amd64, arm64)
+#   tag v*                   build + test, publish :<version> and :latest
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths: ["docker/**", "studio/**", "pins/**", "tests/**", ".github/workflows/image.yml"]
+  pull_request:
+    paths: ["docker/**", "studio/**", "pins/**", "tests/**", ".github/workflows/image.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LOCAL_TAG: wled-studio-builder:ci
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -v
+
+  image:
+    needs: unit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build (amd64, for testing)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.LOCAL_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Unit tests inside the image
+        run: docker run --rm --entrypoint /home/builder/venv/bin/python -w /home/builder/studio-src "$LOCAL_TAG" -m unittest discover -s tests
+
+      - name: Tool versions
+        run: docker run --rm --entrypoint sh "$LOCAL_TAG" -c 'id; python3 --version; node --version; pio --version; git --version'
+
+      - name: Reproduce the bundled vendor image (--check)
+        run: |
+          mkdir -p work out
+          sudo chown 10001:10001 work out
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/work:/work" -v "$PWD/out:/out" "$LOCAL_TAG"
+          cat out/build-report.json
+
+      - name: Determinism (second run, same /work)
+        run: |
+          first=$(jq -r .firmware_sha256 out/build-report.json)
+          sudo rm -rf out2 && mkdir out2 && sudo chown 10001:10001 out2
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/work:/work" -v "$PWD/out2:/out" "$LOCAL_TAG"
+          second=$(jq -r .firmware_sha256 out2/build-report.json)
+          echo "first=$first second=$second"
+          test "$first" = "$second"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: container-result
+          path: |
+            out/build-report.json
+            out/packages.txt
+          if-no-files-found: ignore
+
+      - name: Image metadata
+        if: github.event_name != 'pull_request'
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=edge,branch=main
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish (amd64, arm64)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha

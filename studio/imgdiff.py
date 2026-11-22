@@ -210,6 +210,29 @@ def transplant_elf_sha(a: Image, b: Image) -> bytes:
     return bytes(raw)
 
 
+def normalized(a: Image) -> bytes:
+    """Image A with app_elf_sha256 zeroed, and its checksum and hash recomputed.
+
+    The ELF hash covers debug info with build paths; everything else in the image
+    is code and data. Two builds whose normalized images are equal differ at most
+    in where they were built.
+    """
+    zero = Image(path=a.path, raw=a.raw[:], header=a.header, ext_header=a.ext_header,
+                 segments=a.segments, checksum_offset=a.checksum_offset, sha256_offset=a.sha256_offset)
+    blank = bytearray(a.raw)
+    seg0 = a.segments[0].file_offset
+    if struct.unpack_from("<I", blank, seg0)[0] == APP_DESC_MAGIC:
+        o = seg0 + APP_ELF_SHA_OFFSET
+        blank[o:o + 32] = bytes(32)
+    zero.raw = bytes(blank)
+    return transplant_elf_sha(a, zero)
+
+
+def normalized_sha256(a: Image) -> str:
+    import hashlib
+    return hashlib.sha256(normalized(a)).hexdigest()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("a", type=Path)

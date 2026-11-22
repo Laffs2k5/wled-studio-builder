@@ -33,8 +33,8 @@ Needs Python 3.12+, Node.js 22 and git on the path.
 
 ```bash
 python -m venv .venv && .venv/bin/pip install platformio==6.2.0
-.venv/bin/python studio/build.py pins/quinled-dig-next-2-16.0.1.json
-cat out/*/build-report.json      # identical_except_elf_sha256: true on a Windows host
+.venv/bin/python studio/build.py pins/quinled-16.0.1.json --target dig-next-2 --check
+cat out/*/build-report.json      # check: [] when it matches the verified result for your host
 ```
 
 On Windows, use `.venv\Scripts\python`. A container build is in `docker/Dockerfile`.

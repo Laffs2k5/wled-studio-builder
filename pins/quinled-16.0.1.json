@@ -1,0 +1,167 @@
+{
+  "schema": 2,
+  "name": "quinled-16.0.1",
+  "description": "QuinLED's WLED 16.0.1 builds for its boards (intermittech/QuinLED-Firmware release v16.0.1, images rebuilt 2026-10-27)",
+  "wled": {
+    "repo": "https://github.com/wled/WLED",
+    "ref": "v16.0.1",
+    "commit": "29b389df1c1aaec6ff53aea742d17063b985906c"
+  },
+  "override": {
+    "repo": "https://github.com/intermittech/QuinLED-Firmware",
+    "commit": "b01544302c48468ac24edddebeb5db50323b65f9",
+    "path": "platformio_override.ini"
+  },
+  "pins": {
+    "https://github.com/intermittech/wled-usermod-powermanager.git": "c7d92255a8c5106ac9abb9ab504967a287f36510"
+  },
+  "web_build_time": 1783528886,
+  "gzip_os": 10,
+  "checkout": {
+    "autocrlf": "false"
+  },
+  "targets": {
+    "an_penta_deca": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_An-Penta-Deca.bin",
+        "sha256": "a26a411af56654ae32ad1b85ec8d7d02aa58bb8707ea1eadc6e3d551d940a96d",
+        "size": 1275920
+      },
+      "verified": {}
+    },
+    "an_penta_mini": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_An-Penta-Mini.bin",
+        "sha256": "47e97e7ff71dbf0c57754b1e2f8fe71b6df0943d02112fe0c8d31d475240bce2",
+        "size": 1236576
+      },
+      "verified": {}
+    },
+    "an_penta_plus": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_An-Penta-Plus.bin",
+        "sha256": "27556139408713ba9f4513c24a894e48b797fab1ade94c2c40b57a95a51cd518",
+        "size": 1295360
+      },
+      "verified": {}
+    },
+    "dig-Octa-V4": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Octa-v4.bin",
+        "sha256": "e5625d01cc4fe349e1de858fd048aae1da13599a0fc901acc0e0b673d983a8df",
+        "size": 1329760
+      },
+      "verified": {}
+    },
+    "dig-Octa_32-8L": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Octa-ESP32-8L.bin",
+        "sha256": "7199af3f345616779aa076621f8823bfff6bdb758a15459dfd973b394bbd3447",
+        "size": 1337584
+      },
+      "verified": {}
+    },
+    "dig-Octa_32-8L-Temp": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Octa-ESP32-8L-Temp.bin",
+        "sha256": "1258bca5ac9a18194efba7efbef5e62919947fee6092a3be44e85339ce9d9468",
+        "size": 1337584
+      },
+      "verified": {}
+    },
+    "dig-Quad-V3": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Quad-V3.bin",
+        "sha256": "4d0751d3e754320cb6767cb2d712bc9709faf30c9191b032c288d9d73c352f8e",
+        "size": 1338848
+      },
+      "verified": {}
+    },
+    "dig-Quad-V3-AEplus": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Quad-V3-AEPlus.bin",
+        "sha256": "d8523a6323078542c5f6973f0a31349f1f378d5a31850d4407e1e297a52aff44",
+        "size": 1319648
+      },
+      "verified": {}
+    },
+    "dig-Quad-V4": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Quad-v4.bin",
+        "sha256": "64fd264bcac76040521e9a1a0e5b0acd6552b1b1366d6a5c5882832009f9e722",
+        "size": 1331664
+      },
+      "verified": {}
+    },
+    "dig-Uno-V3": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Uno-V3.bin",
+        "sha256": "e81e9c251e2abcd4a18b263534372e4dd0fa53eac59deefedcffd6ddca356a42",
+        "size": 1338784
+      },
+      "verified": {}
+    },
+    "dig-Uno-V3-AEplus": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Uno-V3-AEplus.bin",
+        "sha256": "b78c92f27a373c6b06071f66b190f943623ee4e0ca6415d2b8cd369bde13f9b7",
+        "size": 1319632
+      },
+      "verified": {}
+    },
+    "dig-Uno-V4": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Uno-v4.bin",
+        "sha256": "de5b3fc88b4602e5a0cbaadbdffbaca7dfe527fbeddee0f12f2a434b39a5c68e",
+        "size": 1331600
+      },
+      "verified": {}
+    },
+    "dig-next-2": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig-Next-2.bin",
+        "sha256": "f6a2b27525acffde78d16ac48dd88c20f777f3763e11ada5ac99494d7f5aa610",
+        "size": 1334784
+      },
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "dfd1f11d38f9a198994512a30d5dc3c8bc3970eb0b80a5b2d16989edd73bfbce",
+          "seen": [
+            "2026-11-22 Windows 11 ARM64 (x86-64 toolchain emulated)",
+            "2026-11-22 GitHub windows-latest"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "91f49144c53bea247e27bfc57220e8816b5a19a8d609716e56347c7905dfc3cc",
+          "seen": [
+            "2026-11-22 builder container on a docker host (two runs)",
+            "2026-11-22 GitHub ubuntu-latest"
+          ],
+          "known_differences": "toolchain newlib paths (no HOST-<triple>/ part, 80 bytes); register allocation in dmx_receive; two prebuilt libstdc++ functions"
+        }
+      },
+      "pins": {
+        "https://github.com/blazoncek/QuickESPNow.git": "193e991642cbffe1d44e7445a0a34445f69a67d8"
+      }
+    },
+    "dig2go": {
+      "reference": {
+        "url": "https://github.com/intermittech/QuinLED-Firmware/releases/download/v16.0.1/WLED_16.0.1_Dig2Go-Audioreactive.bin",
+        "sha256": "ef135715977975c127ba308e38d8aec87185d47dd3c3fdec6a0bb9daba954ec7",
+        "size": 1312480
+      },
+      "verified": {}
+    }
+  },
+  "notes": [
+    "Release-wide inputs apply to every target; a target's keys override them (its pins are merged).",
+    "web_build_time: WLED's UI build stamps WEB_BUILD_TIME (tools/cdata.js). The vendor reuses its build tree, so the UI was last generated at the original 16.0.1 release (2026-07-08). Read from a device's HTTP ETag; `discover.py stamp-at` finds it from any build with the same layout.",
+    "PowerManager: v1.3.0, the newest tag before the images were built; the override fetches the default branch unpinned.",
+    "QuickESPNow: WLED fetches the optional-debug branch, unpinned. PlatformIO caches it per env in the vendor's build tree, so the commit can differ per target: dig-next-2 had 193e991 (2025-03-17); the branch's 2026-09-27 commits add 152 bytes of code. Targets added later (the V4 boards, 2026-10-27) may have the newer commit.",
+    "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
+    "gzip_os=10: the vendor built on Windows, where Node writes OS byte 10 into the web UI's gzip headers.",
+    "verified: per toolchain host. normalized_sha256 is the image with its ELF hash zeroed (imgdiff.normalized), which doesn't depend on build paths. On Windows it equals the vendor image's; Linux toolchains generate slightly different code."
+  ]
+}

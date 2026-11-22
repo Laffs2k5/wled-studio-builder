@@ -8,7 +8,7 @@ docker run --rm \
   -v "$PWD/work:/work" -v "$PWD/out:/out" wled-studio-builder
 ```
 
-The default command reproduces `pins/quinled-dig-next-2-16.0.1.json` into `/out`:
+The default command reproduces `pins/quinled-16.0.1.json` into `/out`:
 - `firmware.bin` and `firmware.elf`;
 - `build-report.json` with the comparison against the vendor image;
 - `objects.json`, the linker inputs;

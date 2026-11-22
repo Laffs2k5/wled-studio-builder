@@ -13,7 +13,10 @@ on:
     inputs:
       pins:
         description: "Pins file"
-        default: "pins/quinled-dig-next-2-16.0.1.json"
+        default: "pins/quinled-16.0.1.json"
+      target:
+        description: "Target (PlatformIO env)"
+        default: "dig-next-2"
 
 permissions:
   contents: read
@@ -43,7 +46,7 @@ jobs:
         run: |
           work=work
           if [ "$RUNNER_OS" = "Windows" ]; then work="C:/w"; fi
-          python studio/build.py "${{ inputs.pins || 'pins/quinled-dig-next-2-16.0.1.json' }}" --work "$work" --out out/result
+          python studio/build.py "${{ inputs.pins || 'pins/quinled-16.0.1.json' }}" --target "${{ inputs.target || 'dig-next-2' }}" --check --work "$work" --out out/result
       - name: Report
         if: always()
         shell: bash
