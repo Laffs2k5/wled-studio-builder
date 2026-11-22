@@ -1,8 +1,14 @@
 name: reproduce
 
 # Rebuild a pinned vendor image and compare it with the vendor's release.
-# Started by hand: a build takes 5-10 minutes per runner.
+# Runs when the build inputs or tools change in a pull request, or by hand.
+# A build takes 5-10 minutes per runner.
 on:
+  pull_request:
+    paths:
+      - "pins/**"
+      - "studio/**"
+      - ".github/workflows/reproduce.yml"
   workflow_dispatch:
     inputs:
       pins:
@@ -31,7 +37,7 @@ jobs:
         run: python -m pip install platformio==6.2.0
       - name: Build and compare
         shell: bash
-        run: python studio/build.py "${{ inputs.pins }}" --out out/result
+        run: python studio/build.py "${{ inputs.pins || 'pins/quinled-dig-next-2-16.0.1.json' }}" --out out/result
       - name: Report
         if: always()
         shell: bash
