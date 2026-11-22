@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: EUPL-1.2
 """Reproduce a pinned WLED build and compare it with the vendor's published image.
 
 Runs the same way on Linux and Windows. Every input comes from a pins file

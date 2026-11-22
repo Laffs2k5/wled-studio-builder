@@ -48,3 +48,9 @@ docker/      the builder image
 docs/        how and why
 tests/       unit tests (python -m unittest discover -s tests)
 ```
+
+## Licence
+
+EUPL-1.2 ([LICENSE](LICENSE)). The repository contains no WLED code; see
+[docs/licensing.md](docs/licensing.md) for what it fetches, and what applies to firmware you build.
+

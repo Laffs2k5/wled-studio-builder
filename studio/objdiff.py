@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: EUPL-1.2
 """Compare the object manifests (objects.json) of two builds.
 
 build.py writes objects.json: a sha256 for every object file and archive member

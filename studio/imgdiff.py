@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: EUPL-1.2
 """Compare two ESP32 application images and explain every byte that differs.
 
 An ESP32 app image is a 24-byte header, a list of segments (load address,

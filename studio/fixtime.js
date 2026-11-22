@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // Preloaded into Node (NODE_OPTIONS=--require) while WLED's web UI is built
 // (tools/cdata.js), to make the generated headers reproducible:
 //

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // studio_example_fx: a minimal example of an own effect for wled-studio builds.
 //
 // It shows the fixed-id registration: the effect always gets the same effect

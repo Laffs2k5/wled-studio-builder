@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: EUPL-1.2
 """Help write a pins file for a vendor release.
 
 Subcommands:

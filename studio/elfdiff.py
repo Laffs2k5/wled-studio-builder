@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: EUPL-1.2
 """Compare two firmware ELF files symbol by symbol.
 
 Lists every symbol whose size differs, or that exists in only one of the two.
