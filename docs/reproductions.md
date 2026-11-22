@@ -40,3 +40,9 @@ three ways:
 
 So only a build on the vendor's host OS can be byte-exact (step 1 of the chain of trust). A Linux
 container build is compared per function instead (step 2).
+
+Per function (`elfdiff.py --code`, addresses normalised): of 7,423 functions, **3 differ** between
+the Windows and the Linux ARM64 build: `dmx_receive` (register allocation) and two `std::string`
+internals from the toolchain's prebuilt libstdc++, which is compiled separately for each host
+package. Every other function is identical instruction for instruction.
+

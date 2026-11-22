@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """Compare two firmware ELF files symbol by symbol.
 
-Lists every symbol whose size differs, or that exists in only one of the two,
-and, for symbols of equal size, whether their bytes differ. Code that refers to
-other addresses can differ only in relocated operands when the layout shifts;
---ignore-shift masks that by comparing sizes only.
+Lists every symbol whose size differs, or that exists in only one of the two.
 
-Uses the toolchain's nm and objcopy (xtensa-esp32-elf-*), found under the
+Uses the toolchain's nm and objdump (xtensa-esp32-elf-*), found under the
 PlatformIO core directory or given with --toolchain-bin.
 
+With --code, it also disassembles both ELFs and compares every function's
+instructions after normalising addresses (absolute addresses, branch targets and
+literal-pool references), so a function that only moved compares equal, and a
+function the compiler generated differently shows up.
+
 Usage:
-  python studio/elfdiff.py A.elf B.elf [--toolchain-bin DIR] [--bytes] [--json out.json]
+  python studio/elfdiff.py A.elf B.elf [--toolchain-bin DIR] [--code] [--json out.json]
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -63,6 +66,35 @@ def symbols(nm: str, elf: Path) -> dict[str, tuple[int, int, str]]:
     return syms
 
 
+FUNC_RE = re.compile(r"^([0-9a-f]{8}) <(.+)>:$")
+INSN_RE = re.compile(r"^\s*[0-9a-f]+:\s+(.*)$")
+ADDR_RE = re.compile(r"\b[0-9a-f]{8}\b( <[^>]*>)?|0x[0-9a-f]+|<[^>]*>")
+
+
+def functions(objdump: str, elf: Path) -> dict[str, list[str]]:
+    """name -> normalised instruction list, for every function in executable sections."""
+    out = subprocess.run([objdump, "-d", "--no-show-raw-insn", "-C", str(elf)], check=True,
+                         stdout=subprocess.PIPE, text=True, errors="replace").stdout
+    funcs: dict[str, list[str]] = {}
+    cur: list[str] | None = None
+    for line in out.splitlines():
+        m = FUNC_RE.match(line)
+        if m:
+            name = m.group(2)
+            key, n = name, 1
+            while key in funcs:
+                n += 1
+                key = f"{name}#{n}"
+            cur = funcs.setdefault(key, [])
+            continue
+        if cur is None:
+            continue
+        m = INSN_RE.match(line)
+        if m:
+            cur.append(ADDR_RE.sub("@", m.group(1)).strip())
+    return funcs
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("a", type=Path)
@@ -70,6 +102,7 @@ def main() -> int:
     ap.add_argument("--toolchain-bin", type=Path)
     ap.add_argument("--json", type=Path)
     ap.add_argument("--top", type=int, default=60)
+    ap.add_argument("--code", action="store_true", help="compare normalised disassembly per function")
     args = ap.parse_args()
 
     nm = find_tool("xtensa-esp32-elf-nm", args.toolchain_bin)
@@ -86,6 +119,14 @@ def main() -> int:
         "size_differs": size_diff,
         "net_size_a_minus_b": sum(v[1] for v in sa.values()) - sum(v[1] for v in sb.values()),
     }
+    if args.code:
+        objdump = find_tool("xtensa-esp32-elf-objdump", args.toolchain_bin)
+        fa, fb = functions(objdump, args.a), functions(objdump, args.b)
+        common = set(fa) & set(fb)
+        rep["code_only_a"] = sorted(set(fa) - set(fb))
+        rep["code_only_b"] = sorted(set(fb) - set(fa))
+        rep["code_differs"] = sorted(k for k in common if fa[k] != fb[k])
+        rep["code_functions_compared"] = len(common)
     if args.json:
         args.json.write_text(json.dumps(rep, indent=2) + "\n")
 
@@ -97,7 +138,19 @@ def main() -> int:
         print(f"  B only  {sb[k][1]:>7}  {k}")
     for k, x, y in size_diff[: args.top]:
         print(f"  size    {x:>7} -> {y:<7} ({x - y:+d})  {k}")
+    if args.code:
+        print(f"code: {rep['code_functions_compared']} functions compared, "
+              f"{len(rep['code_differs'])} differ, {len(rep['code_only_a'])} only in A, "
+              f"{len(rep['code_only_b'])} only in B")
+        for k in rep["code_differs"][: args.top]:
+            print(f"  code differs  {k}")
+        for k in rep["code_only_a"][: args.top]:
+            print(f"  code A only   {k}")
+        for k in rep["code_only_b"][: args.top]:
+            print(f"  code B only   {k}")
     same = not only_a and not only_b and not size_diff
+    if args.code:
+        same = same and not rep["code_differs"] and not rep["code_only_a"] and not rep["code_only_b"]
     print("RESULT: " + ("SAME SYMBOLS AND SIZES" if same else "DIFFERENCES"))
     return 0 if same else 1
 

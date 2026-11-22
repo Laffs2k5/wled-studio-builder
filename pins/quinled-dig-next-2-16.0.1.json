@@ -28,9 +28,11 @@
     "The reference was built on Windows: its newlib strings carry HOST-x86_64-w64-mingw32.",
     "QuickESPNow: WLED fetches the optional-debug branch, unpinned. The vendor's build tree had cached 193e991 (2025-03-17); the branch's 2026-09-27 commits add 152 bytes of code.",
     "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
-    "Expected remaining difference: esp_app_desc_t.app_elf_sha256 (32 bytes at image offset 0xb0) and the image checksum and hash. The ELF hash covers debug info with build paths."
+    "Expected remaining difference: esp_app_desc_t.app_elf_sha256 (32 bytes at image offset 0xb0) and the image checksum and hash. The ELF hash covers debug info with build paths.",
+    "gzip_os=10: the vendor built on Windows, where Node writes OS byte 10 into the web UI's gzip headers; Linux builds would write 3."
   ],
   "checkout": {
     "autocrlf": "false"
-  }
+  },
+  "gzip_os": 10
 }
