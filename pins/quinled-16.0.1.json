@@ -13,7 +13,8 @@
     "path": "platformio_override.ini"
   },
   "pins": {
-    "https://github.com/intermittech/wled-usermod-powermanager.git": "c7d92255a8c5106ac9abb9ab504967a287f36510"
+    "https://github.com/intermittech/wled-usermod-powermanager.git": "c7d92255a8c5106ac9abb9ab504967a287f36510",
+    "https://github.com/blazoncek/QuickESPNow.git": "193e991642cbffe1d44e7445a0a34445f69a67d8"
   },
   "web_build_time": 1783528886,
   "gzip_os": 10,
@@ -99,7 +100,15 @@
         "sha256": "e81e9c251e2abcd4a18b263534372e4dd0fa53eac59deefedcffd6ddca356a42",
         "size": 1338784
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "c3f832717ab2087ee76ffa624f20a8fcc76acc07fdff45239ea60a9846e956b3",
+          "seen": [
+            "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)"
+          ]
+        }
+      }
     },
     "dig-Uno-V3-AEplus": {
       "reference": {
@@ -141,9 +150,6 @@
           ],
           "known_differences": "toolchain newlib paths (no HOST-<triple>/ part, 80 bytes); register allocation in dmx_receive; two prebuilt libstdc++ functions"
         }
-      },
-      "pins": {
-        "https://github.com/blazoncek/QuickESPNow.git": "193e991642cbffe1d44e7445a0a34445f69a67d8"
       }
     },
     "dig2go": {
@@ -159,7 +165,7 @@
     "Release-wide inputs apply to every target; a target's keys override them (its pins are merged).",
     "web_build_time: WLED's UI build stamps WEB_BUILD_TIME (tools/cdata.js). The vendor reuses its build tree, so the UI was last generated at the original 16.0.1 release (2026-07-08). Read from a device's HTTP ETag; `discover.py stamp-at` finds it from any build with the same layout.",
     "PowerManager: v1.3.0, the newest tag before the images were built; the override fetches the default branch unpinned.",
-    "QuickESPNow: WLED fetches the optional-debug branch, unpinned. PlatformIO caches it per env in the vendor's build tree, so the commit can differ per target: dig-next-2 had 193e991 (2025-03-17); the branch's 2026-09-27 commits add 152 bytes of code. Targets added later (the V4 boards, 2026-10-27) may have the newer commit.",
+    "QuickESPNow: WLED fetches the optional-debug branch, unpinned. PlatformIO caches it per env in the vendor's build tree, so the commit can differ per target: dig-next-2 and dig-Uno-V3 had 193e991 (2025-03-17); the branch's 2026-09-27 commits add 152 bytes of code. Targets added later (the V4 boards, 2026-10-27) may have the newer commit.",
     "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
     "gzip_os=10: the vendor built on Windows, where Node writes OS byte 10 into the web UI's gzip headers.",
     "verified: per toolchain host. normalized_sha256 is the image with its ELF hash zeroed (imgdiff.normalized), which doesn't depend on build paths. On Windows it equals the vendor image's; Linux toolchains generate slightly different code."

@@ -1,0 +1,96 @@
+name: matrix
+
+# Rebuild every target of every pins file and check it against its verified
+# results: on Windows (the vendor's host OS: must match the vendor image) and on
+# x86-64 Linux (must match the recorded normalized sha256). Targets without a
+# verified result for a host are built and reported, not failed: their reports
+# are how new results get recorded.
+on:
+  pull_request:
+    paths: ["pins/**", "studio/**", ".github/workflows/matrix.yml"]
+  push:
+    branches: [main]
+    paths: ["pins/**", "studio/build.py", "studio/imgdiff.py", ".github/workflows/matrix.yml"]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"   # weekly: upstream drift (registry packages, deleted tags)
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: list
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, pathlib
+          items = []
+          for f in sorted(pathlib.Path("pins").glob("*.json")):
+              for t in json.loads(f.read_text())["targets"]:
+                  items.append({"pins": str(f), "target": t})
+          print("targets=" + json.dumps(items))
+          PY
+
+  build:
+    needs: list
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        item: ${{ fromJSON(needs.list.outputs.targets) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.23.5"
+      - run: python -m pip install platformio==6.2.0
+      - name: Build and check
+        shell: bash
+        # A short work path on Windows: long compiler command lines otherwise
+        # exceed its limit ("CreateProcess: No such file or directory").
+        run: |
+          work=work; [ "$RUNNER_OS" = "Windows" ] && work="C:/w"
+          set +e
+          python studio/build.py "${{ matrix.item.pins }}" --target "${{ matrix.item.target }}" \
+            --check --work "$work" --out out/result
+          rc=$?
+          set -e
+          if [ $rc -eq 3 ] && grep -q '"no verified result' out/result/build-report.json; then
+            echo "::notice::${{ matrix.item.target }} on ${{ runner.os }}: no verified result yet (reported only)"
+            rc=0
+          fi
+          exit $rc
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p = pathlib.Path("out/result/build-report.json")
+          if p.exists():
+              r = json.loads(p.read_text())
+              print("| target | toolchain host | identical except ELF hash | normalized | check |")
+              print("|---|---|---|---|---|")
+              print(f"| {r['target']} | {r['toolchain_host']} | {r.get('identical_except_elf_sha256')} "
+                    f"| `{r['normalized_sha256'][:16]}` | {'; '.join(r['check']) or 'ok'} |")
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: report-${{ matrix.item.target }}-${{ runner.os }}
+          path: out/result/build-report.json
+          if-no-files-found: ignore

@@ -2,7 +2,18 @@
 
 Vendor images reproduced with `studio/build.py`, and what it took.
 
-## QuinLED Dig-Next-2, WLED 16.0.1 (pins/quinled-16.0.1.json)
+## QuinLED, WLED 16.0.1 (pins/quinled-16.0.1.json)
+
+14 boards, one release. The verified results per board and toolchain host are in the pins file;
+the `matrix` workflow rebuilds all of them on Windows and x86-64 Linux.
+
+| Board (target) | Windows | x86-64 Linux |
+|---|---|---|
+| dig-next-2 | matches the vendor image | recorded (`91f49144…`) |
+| dig-Uno-V3 | matches the vendor image (2026-11-23, same pins, no change to the tool) | not yet |
+| the other 12 | not yet (matrix) | not yet (matrix) |
+
+### Dig-Next-2
 
 **Result (2026-11-22): identical apart from the ELF hash.** Built on Windows (ARM64, running the
 x86-64 toolchain under emulation), the image matches QuinLED's release image
