@@ -46,3 +46,17 @@ the Windows and the Linux ARM64 build: `dmx_receive` (register allocation) and t
 internals from the toolchain's prebuilt libstdc++, which is compiled separately for each host
 package. Every other function is identical instruction for instruction.
 
+**x86-64 Linux** (the builder container on a docker host, and GitHub's Ubuntu runner): the same 3
+functions differ from the Windows build. The image is 80 bytes shorter: the linux-amd64 toolchain
+was built natively, so its newlib paths have no `HOST-<triple>/` part at all (4 strings, 24 bytes
+each, before alignment). The container build is **deterministic** (two runs, identical `.bin` and
+`.elf`), and it equals the Ubuntu runner's image apart from the ELF hash.
+
+## Step 3: custom vs stock (example usermod)
+
+Both built on Windows with `--clean` in the same work tree; the custom build adds
+`examples/usermods/studio_example_fx` (one effect, fixed id 254):
+- **objects:** 502 of 502 stock objects byte-identical; 1 added (`studio_example_fx.cpp.o`);
+- **image:** 1,336,096 bytes (+1,312);
+- the clean stock rebuild still matches QuinLED's image apart from the ELF hash.
+

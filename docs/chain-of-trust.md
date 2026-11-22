@@ -18,8 +18,16 @@ flowchart LR
    `studio/imgdiff.py` classifies every differing byte, and anything unexplained fails.
 2. **Container build ≡ the step-1 build**, compared per symbol (`studio/elfdiff.py`). Allowed
    differences: toolchain host strings, and addresses that shift after them.
-3. **Custom build vs stock build**, both from the container: the symbols differ only by your
-   usermod (and by any built-in effects you chose to remove).
+3. **Custom build vs stock build**, same host and work tree, both with `--clean`: every stock
+   **object file** must be byte-identical in the custom build, and the only new objects must come
+   from your usermods (`studio/objdiff.py` on the two `objects.json`).
+
+   Why object files rather than the linked image: adding objects changes the link layout, and the
+   linker keeps one copy of each inline function from headers (ArduinoJson templates, inline
+   class methods) out of the copies in all objects. With one more object it may keep a different,
+   equivalent copy. A per-function comparison of the images therefore shows dozens of "changed"
+   functions that come from identical sources (38 for the example usermod). Identical linker inputs,
+   plus our objects, is the precise statement.
 4. **A spare board** of the same chip family boots it, survives an OTA and an `/update?revert`, and
    passes post-flash checks (version, usermods, free heap, frame rate). Only then the device.
 

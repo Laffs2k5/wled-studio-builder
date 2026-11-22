@@ -94,12 +94,83 @@ def apply_pins(text: str, pins: dict[str, str]) -> tuple[str, list[str]]:
     return text, hits
 
 
+def add_usermods(override: str, env_name: str, paths: list[Path]) -> str:
+    """Append local usermods (symlink://) to custom_usermods in [env:<env_name>]."""
+    if not paths:
+        return override
+    lines = override.splitlines()
+    start = next((i for i, l in enumerate(lines) if l.strip() == f"[env:{env_name}]"), None)
+    if start is None:
+        raise SystemExit(f"[env:{env_name}] not found in the override")
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("[")), len(lines))
+    key = next((i for i in range(start, end) if lines[i].split("=")[0].strip() == "custom_usermods"), None)
+    if key is None:
+        raise SystemExit(f"custom_usermods not found in [env:{env_name}]")
+    # continuation lines of the value are indented
+    j = key + 1
+    while j < end and lines[j][:1] in (" ", "\t") and lines[j].strip():
+        j += 1
+    extra = [f"  symlink://{p.resolve().as_posix()}" for p in paths]
+    return "\n".join(lines[:j] + extra + lines[j:]) + "\n"
+
+
+LIB_DIR_RE = re.compile(r"^lib[0-9a-f]{3}$")
+
+
+def ar_members(path: Path):
+    """Yield (name, bytes) for each member of a GNU/BSD ar archive."""
+    data = path.read_bytes()
+    if not data.startswith(b"!<arch>\n"):
+        return
+    off, longnames = 8, b""
+    while off + 60 <= len(data):
+        hdr = data[off:off + 60]
+        name = hdr[:16].decode("ascii", "replace").strip()
+        size = int(hdr[48:58].decode().strip())
+        body = data[off + 60: off + 60 + size]
+        off += 60 + size + (size & 1)
+        if name == "//":
+            longnames = body
+            continue
+        if name in ("/", "/SYM64/"):
+            continue
+        if name.startswith("/") and name[1:].isdigit():
+            i = int(name[1:])
+            name = longnames[i:longnames.index(b"/\n", i)].decode()
+        yield name.rstrip("/"), body
+
+
+def object_manifest(build_dir: Path) -> dict[str, str]:
+    """Hash every object file and archive member, keyed by a build-independent path.
+
+    PlatformIO puts each library in a folder named lib<3 hex digits>, numbered in
+    the order libraries are found; that folder is dropped from the key so that
+    adding a library doesn't rename every other object.
+    """
+    out: dict[str, str] = {}
+    for f in sorted(build_dir.rglob("*")):
+        if not f.is_file():
+            continue
+        rel = [p for p in f.relative_to(build_dir).parts if not LIB_DIR_RE.match(p)]
+        key = "/".join(rel)
+        if f.suffix == ".o":
+            out[key] = hashlib.sha256(f.read_bytes()).hexdigest()
+        elif f.suffix == ".a":
+            for name, body in ar_members(f):
+                out[f"{key}:{name}"] = hashlib.sha256(body).hexdigest()
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("pins", type=Path)
     ap.add_argument("--work", type=Path, help="work tree (default: work/<name>)")
     ap.add_argument("--out", type=Path, help="output dir (default: out/<name>-<host>)")
     ap.add_argument("--label", default=None, help="extra label for the output dir")
+    ap.add_argument("--clean", action="store_true",
+                    help="remove the previous build output first, so every object is compiled anew")
+    ap.add_argument("--usermod", type=Path, action="append", default=[],
+                    help="a local usermod folder to add to the build (repeatable)")
     ap.add_argument("--autocrlf", choices=["true", "false", "input"], default=None,
                     help="git core.autocrlf for the WLED checkout (default: the host's)")
     args = ap.parse_args()
@@ -124,6 +195,7 @@ def main() -> int:
     download(f"{raw}/{ov['commit']}/{ov['path']}", ov_src)
     url_pins = pins.get("pins", {})
     override, hits_ov = apply_pins(ov_src.read_text(encoding="utf-8"), url_pins)
+    override = add_usermods(override, ov["env"], args.usermod)
     (wled / "platformio_override.ini").write_text(override, encoding="utf-8", newline="\n")
     (out / "platformio_override.ini").write_text(override, encoding="utf-8", newline="\n")
     # WLED's own platformio.ini may fetch branches too (e.g. QuickESPNow#optional-debug)
@@ -146,11 +218,14 @@ def main() -> int:
 
     # 4. build, with libraries resolved afresh (a cached branch checkout would hide the pins)
     shutil.rmtree(wled / ".pio" / "libdeps" / ov["env"], ignore_errors=True)
+    if args.clean:
+        shutil.rmtree(wled / ".pio" / "build" / ov["env"], ignore_errors=True)
     run([sys.executable, "-m", "platformio", "run", "-e", ov["env"], "-d", str(wled)], env=env)
 
     build_dir = wled / ".pio" / "build" / ov["env"]
     for f in ("firmware.bin", "firmware.elf"):
         shutil.copy2(build_dir / f, out / f)
+    (out / "objects.json").write_text(json.dumps(object_manifest(build_dir), indent=1) + "\n")
 
     # 5. compare with the vendor's image
     ref = pins.get("reference")
@@ -164,6 +239,7 @@ def main() -> int:
         "git": tool_version(["git", "--version"]),
         "wled_commit": pins["wled"]["commit"],
         "override_commit": ov["commit"],
+        "extra_usermods": [p.name for p in args.usermod],
         "autocrlf": run(["git", "config", "--get", "core.autocrlf"], cwd=wled, capture=True)
         if subprocess.run(["git", "config", "--get", "core.autocrlf"], cwd=wled,
                           stdout=subprocess.DEVNULL).returncode == 0 else "unset",

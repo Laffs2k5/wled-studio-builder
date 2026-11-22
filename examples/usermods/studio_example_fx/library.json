@@ -1,0 +1,5 @@
+{
+  "name": "wled-studio-example-fx",
+  "description": "Example own effect for wled-studio builds, registered at a fixed effect id",
+  "build": { "libArchive": false }
+}
