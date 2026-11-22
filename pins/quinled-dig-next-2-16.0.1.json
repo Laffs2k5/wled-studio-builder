@@ -13,7 +13,8 @@
     "env": "dig-next-2"
   },
   "pins": {
-    "https://github.com/intermittech/wled-usermod-powermanager.git": "c7d92255a8c5106ac9abb9ab504967a287f36510"
+    "https://github.com/intermittech/wled-usermod-powermanager.git": "c7d92255a8c5106ac9abb9ab504967a287f36510",
+    "https://github.com/blazoncek/QuickESPNow.git": "193e991642cbffe1d44e7445a0a34445f69a67d8"
   },
   "web_build_time": 1783528886,
   "reference": {
@@ -24,6 +25,12 @@
   "notes": [
     "web_build_time: WLED's UI build stamps WEB_BUILD_TIME (tools/cdata.js). QuinLED's value was read from a device's HTTP ETag and appears exactly once in the reference image.",
     "The PowerManager pin is v1.3.0, the newest tag before the reference was built; the override fetches the default branch unpinned.",
-    "The reference was built on Windows: its newlib strings carry HOST-x86_64-w64-mingw32."
-  ]
+    "The reference was built on Windows: its newlib strings carry HOST-x86_64-w64-mingw32.",
+    "QuickESPNow: WLED fetches the optional-debug branch, unpinned. The vendor's build tree had cached 193e991 (2025-03-17); the branch's 2026-09-27 commits add 152 bytes of code.",
+    "checkout.autocrlf=false: the vendor's checkout had LF line endings; with Git for Windows' default (true), wled00/data/iro.js grows by 4 bytes inside the image.",
+    "Expected remaining difference: esp_app_desc_t.app_elf_sha256 (32 bytes at image offset 0xb0) and the image checksum and hash. The ELF hash covers debug info with build paths."
+  ],
+  "checkout": {
+    "autocrlf": "false"
+  }
 }

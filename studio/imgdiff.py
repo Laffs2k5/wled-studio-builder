@@ -7,6 +7,9 @@ SHA-256. This tool parses both images, compares them segment by segment, and
 classifies each differing range:
 
   checksum / sha256   the image's own integrity fields (follow from any change)
+  app-elf-sha256      the app descriptor's hash of the ELF file; the ELF carries debug
+                      info with build paths, so it differs between build directories
+                      even when every byte of code and data is identical
   web-build-time      WLED's WEB_BUILD_TIME stamp (4 bytes)
   toolchain-path      a string carrying the toolchain's build-host path
   gzip                a gzip stream (WLED's web UI); compared after decompressing
@@ -116,8 +119,15 @@ def gzip_streams(data: bytes) -> list[tuple[int, int, bytes]]:
 TOOLCHAIN_RE = re.compile(rb"HOST-x86_64-[A-Za-z0-9_-]+|/builds/idf/crosstool-NG[^\x00]*")
 
 
+APP_DESC_MAGIC = 0xABCD5432
+APP_ELF_SHA_OFFSET = 144  # esp_app_desc_t.app_elf_sha256, 32 bytes
+
+
 def classify_range(a: bytes, b: bytes, s: int, e: int, wbt: int | None,
-                   gz_a: list, gz_b: list) -> str:
+                   gz_a: list, gz_b: list, seg_index: int = -1) -> str:
+    if seg_index == 0 and struct.unpack_from("<I", a, 0)[0] == APP_DESC_MAGIC:
+        if APP_ELF_SHA_OFFSET <= s and e <= APP_ELF_SHA_OFFSET + 32:
+            return "app-elf-sha256"
     if wbt is not None:
         stamp = struct.pack("<I", wbt)
         for buf in (a, b):
@@ -158,7 +168,7 @@ def compare(a: Image, b: Image, wbt: int | None) -> dict:
             continue
         gz_a, gz_b = gzip_streams(sa.data), gzip_streams(sb.data)
         for s, e in merge_close(diff_ranges(sa.data, sb.data)):
-            kind = classify_range(sa.data, sb.data, s, e, wbt, gz_a, gz_b)
+            kind = classify_range(sa.data, sb.data, s, e, wbt, gz_a, gz_b, sa.index)
             report["ranges"].append({
                 "segment": sa.index, "addr": hex(sa.load_addr + s), "file_offset": hex(sa.file_offset + s),
                 "length": e - s, "kind": kind,
@@ -178,6 +188,28 @@ def compare(a: Image, b: Image, wbt: int | None) -> dict:
     return report
 
 
+def transplant_elf_sha(a: Image, b: Image) -> bytes:
+    """Return image A with B's app_elf_sha256, and A's checksum and hash recomputed.
+
+    If the result equals B byte for byte, A and B differ only in the ELF hash.
+    """
+    raw = bytearray(a.raw)
+    seg0 = a.segments[0].file_offset
+    if struct.unpack_from("<I", raw, seg0)[0] != APP_DESC_MAGIC:
+        raise SystemExit("image A has no app descriptor")
+    o = seg0 + APP_ELF_SHA_OFFSET
+    raw[o:o + 32] = b.raw[o:o + 32]
+    chk = 0xEF
+    for seg in a.segments:
+        for byte in raw[seg.file_offset: seg.file_offset + len(seg.data)]:
+            chk ^= byte
+    raw[a.checksum_offset] = chk
+    if a.sha256_offset is not None:
+        import hashlib
+        raw[a.sha256_offset:a.sha256_offset + 32] = hashlib.sha256(raw[:a.sha256_offset]).digest()
+    return bytes(raw)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("a", type=Path)
@@ -185,9 +217,17 @@ def main() -> int:
     ap.add_argument("--web-build-time", type=int, default=None)
     ap.add_argument("--json", type=Path, default=None)
     ap.add_argument("--max-ranges", type=int, default=40)
+    ap.add_argument("--transplant-elf-sha", action="store_true",
+                    help="also check: A with B's ELF hash (checksum and hash recomputed) == B")
     args = ap.parse_args()
 
     a, b = parse(args.a), parse(args.b)
+    if args.transplant_elf_sha:
+        import hashlib
+        t = transplant_elf_sha(a, b)
+        same = t == b.raw
+        print(f"TRANSPLANT: A with B's app_elf_sha256 -> sha256 {hashlib.sha256(t).hexdigest()} "
+              f"{'== B (identical apart from the ELF hash)' if same else '!= B'}")
     rep = compare(a, b, args.web_build_time)
     if args.json:
         args.json.write_text(json.dumps(rep, indent=2) + "\n")

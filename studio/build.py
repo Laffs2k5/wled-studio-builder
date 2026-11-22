@@ -80,14 +80,18 @@ def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None) ->
         raise SystemExit(f"checkout mismatch: wanted {commit}, got {head}")
 
 
-def apply_pins(override: str, pins: dict[str, str]) -> str:
-    """Pin usermod URLs that the override fetches unpinned (url -> url#commit)."""
+def apply_pins(text: str, pins: dict[str, str]) -> tuple[str, list[str]]:
+    """Pin git URLs to commits: `url` or `url#ref` becomes `url#commit`.
+
+    Returns the new text and the URLs that were found in it.
+    """
+    hits = []
     for url, commit in pins.items():
-        pattern = re.compile(re.escape(url) + r"(?![#\w])")
-        if not pattern.search(override):
-            raise SystemExit(f"pin target not found in override: {url}")
-        override = pattern.sub(f"{url}#{commit}", override)
-    return override
+        pattern = re.compile(re.escape(url) + r"(#[^\s;]+)?(?=[\s;]|$)", re.MULTILINE)
+        if pattern.search(text):
+            hits.append(url)
+            text = pattern.sub(f"{url}#{commit}", text)
+    return text, hits
 
 
 def main() -> int:
@@ -110,16 +114,26 @@ def main() -> int:
 
     # 1. WLED at the pinned commit
     wled = work / "wled"
-    checkout(pins["wled"]["repo"], pins["wled"]["commit"], wled, args.autocrlf)
+    autocrlf = args.autocrlf or pins.get("checkout", {}).get("autocrlf")
+    checkout(pins["wled"]["repo"], pins["wled"]["commit"], wled, autocrlf)
 
     # 2. the vendor's override at its pinned commit, with unpinned usermods pinned
     ov = pins["override"]
     raw = ov["repo"].replace("https://github.com/", "https://raw.githubusercontent.com/")
     ov_src = out / "platformio_override.original.ini"
     download(f"{raw}/{ov['commit']}/{ov['path']}", ov_src)
-    override = apply_pins(ov_src.read_text(encoding="utf-8"), pins.get("pins", {}))
+    url_pins = pins.get("pins", {})
+    override, hits_ov = apply_pins(ov_src.read_text(encoding="utf-8"), url_pins)
     (wled / "platformio_override.ini").write_text(override, encoding="utf-8", newline="\n")
     (out / "platformio_override.ini").write_text(override, encoding="utf-8", newline="\n")
+    # WLED's own platformio.ini may fetch branches too (e.g. QuickESPNow#optional-debug)
+    pio_ini = wled / "platformio.ini"
+    pio_text, hits_pio = apply_pins(pio_ini.read_bytes().decode("utf-8"), url_pins)
+    if hits_pio:
+        pio_ini.write_bytes(pio_text.encode("utf-8"))
+    missing = set(url_pins) - set(hits_ov) - set(hits_pio)
+    if missing:
+        raise SystemExit(f"pin targets not found: {sorted(missing)}")
 
     # 3. environment: a fixed UI build time, an isolated PlatformIO core
     env = os.environ.copy()
@@ -128,7 +142,8 @@ def main() -> int:
     env["NODE_OPTIONS"] = (env.get("NODE_OPTIONS", "") + f' --require "{fixtime.as_posix()}"').strip()
     env.setdefault("PLATFORMIO_CORE_DIR", str(work / "pio-core"))
 
-    # 4. build
+    # 4. build, with libraries resolved afresh (a cached branch checkout would hide the pins)
+    shutil.rmtree(wled / ".pio" / "libdeps" / ov["env"], ignore_errors=True)
     run([sys.executable, "-m", "platformio", "run", "-e", ov["env"], "-d", str(wled)], env=env)
 
     build_dir = wled / ".pio" / "build" / ov["env"]
@@ -162,6 +177,16 @@ def main() -> int:
         report["reference_sha256"] = ref["sha256"]
         report["reference_size"] = ref["size"]
         report["identical"] = report["firmware_sha256"] == ref["sha256"]
+        # explain any difference (see imgdiff.py), and test the ELF-hash-only hypothesis
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import imgdiff  # noqa: E402
+        a, b = imgdiff.parse(out / "firmware.bin"), imgdiff.parse(ref_bin)
+        diff = imgdiff.compare(a, b, pins.get("web_build_time"))
+        report["diff_summary"] = diff["summary"]
+        report["diff_layout"] = diff["layout"]
+        same_layout = not diff["layout"] and len(a.raw) == len(b.raw)
+        report["identical_except_elf_sha256"] = bool(
+            same_layout and imgdiff.transplant_elf_sha(a, b) == b.raw)
     (out / "build-report.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     return 0
