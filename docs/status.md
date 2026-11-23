@@ -8,9 +8,9 @@ Updated 2026-11-23.
   overridable from the command line), `build.py --check` against recorded results per toolchain
   host, a normalized image hash that doesn't depend on build paths.
 - **QuinLED 16.0.1:**
-  - 11 of 14 boards reproduce the vendor image byte for byte, apart from the ELF hash, on Windows
-    (GitHub's runner, and a local ARM64 machine running the x86-64 toolchain);
-  - the 3 V4 boards need a newer QuickESPNow, pinned per target, to verify;
+  - **all 14 boards** reproduce the vendor image byte for byte, apart from the ELF hash, on Windows
+    (GitHub's runner, and a local ARM64 machine running the x86-64 toolchain). The V4 boards took a
+    newer QuickESPNow pin and `origin_remote: false`;
   - x86-64 Linux results are recorded per board where they build. QuinLED's override names some
     usermods in the wrong case for Linux; fixed automatically.
 - **The gate** (`gate.py`): stock build checked, custom build, linker inputs compared (only the
@@ -26,14 +26,13 @@ Updated 2026-11-23.
 
 ## Next
 
-1. Record the V4 boards and the case-fixed Linux results from the matrix.
-2. More vendor releases (QuinLED 16.0.0, 0.15.x; stock WLED's esp32 builds), using
+1. More vendor releases (QuinLED 16.0.0, 0.15.x; stock WLED's esp32 builds), using
    `discover.py` and the matrix.
-3. Egress allowlist for the builder container (a proxy on an internal network); pip
+2. Egress allowlist for the builder container (a proxy on an internal network); pip
    `--require-hashes`; an apt snapshot; an `--offline` rerun with no network.
-4. Exact colours in the preview: build WLED's own colour and palette helpers from the user's
+3. Exact colours in the preview: build WLED's own colour and palette helpers from the user's
    checkout instead of the stand-ins.
-5. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
+4. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
    driven from the app.
 
 ## Waiting on

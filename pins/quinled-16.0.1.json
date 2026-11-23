@@ -99,7 +99,22 @@
         "sha256": "e5625d01cc4fe349e1de858fd048aae1da13599a0fc901acc0e0b673d983a8df",
         "size": 1329760
       },
-      "verified": {},
+      "verified": {
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "806fb007fcfa929571f21cc637938533e60a51ed5955df84cd8beef331dff43e",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        },
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "6bb3391857264f2b2295f1e2879608c3696d9e5fafd78c81aaa4509e0c181f2e",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      },
       "pins": {
         "https://github.com/blazoncek/QuickESPNow.git": "2985a4a6eb67b9f3bc07e7b6b267716ac1b0c4b9"
       }
@@ -204,7 +219,22 @@
         "sha256": "64fd264bcac76040521e9a1a0e5b0acd6552b1b1366d6a5c5882832009f9e722",
         "size": 1331664
       },
-      "verified": {},
+      "verified": {
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "e2f1927b2b0337b83674676218ddb2a309e3721f425b27bf66192d8496cc1589",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        },
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "a894dc1076ccdeb0ba864f3de4091e6564ad98597e599a86c87903b98ceadee4",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        }
+      },
       "pins": {
         "https://github.com/blazoncek/QuickESPNow.git": "2985a4a6eb67b9f3bc07e7b6b267716ac1b0c4b9"
       }
@@ -269,7 +299,15 @@
           "matches_reference": true,
           "normalized_sha256": "6ce22921f3659fc8bc8aaf3b08577d18f26ae756340190e37a7a8339cf75f67e",
           "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)",
             "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "2c180b164d13ab8ded7eb88d2a1a24515f3394497735f622429861c168a72911",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
           ]
         }
       },
