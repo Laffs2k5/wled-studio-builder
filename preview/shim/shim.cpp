@@ -31,7 +31,10 @@ std::string name_of(const std::string& md) { return md.substr(0, md.find('@')); 
 void preview::register_usermod(Usermod* m) { usermods().push_back(m); }
 
 bool SegmentRuntime::allocateData(size_t len) {
-  if (data && dataSize >= len) { memset(data, 0, len); return true; }
+  if (data && dataSize >= len) {  // as WLED: keep the data; clear it only on the effect's first call
+    if (call == 0) memset(data, 0, len);
+    return true;
+  }
   deallocateData();
   data = static_cast<uint8_t*>(calloc(len, 1));
   dataSize = data ? len : 0;

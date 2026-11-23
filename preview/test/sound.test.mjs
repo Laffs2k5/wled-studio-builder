@@ -41,3 +41,17 @@ test("without a level, the simulation drives it, and the sound simulation settin
   const stomp = [0, 60, 200, 300, 500, 560].map(lit);
   assert.deepEqual(stomp.map((n) => n > 50), [true, true, false, false, true, true]);
 });
+
+test("an effect's data lasts across frames, and is cleared when it is selected again", async () => {
+  const m = await createModule();
+  m._preview_setup(10);
+  m._preview_set(9, 0x00ffffff);
+  assert.equal(m._preview_select(2), 2);
+  const lit = (t) => {
+    const ptr = m._preview_frame(t) >>> 2;
+    return Array.from(m.HEAPU32.subarray(ptr, ptr + 10)).filter((c) => c !== 0).length;
+  };
+  assert.deepEqual([lit(0), lit(20), lit(40)], [1, 2, 3]);
+  m._preview_select(2);
+  assert.equal(lit(60), 1);
+});
