@@ -37,6 +37,19 @@ Updated 2026-11-23.
    checkout instead of the stand-ins.
 4. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
    driven from the app.
+5. **A build manifest** for wled-studio's preflight, which checks a library against a firmware
+   before it is flashed: the built image's effects (id, name, metadata).
+
+## Open design items
+
+- **How to write the build manifest.** The gate already proves that every stock object file is
+  unchanged, so a custom image's built-in effects are the vendor release's. The manifest can
+  therefore be the release's effect list, recorded once per pins target (read from a device running
+  it, or from the sources at the pinned commit), plus the usermods' own effects: ids from their
+  `addEffect` calls, metadata from their `_data_…` strings. Reading usermod sources is
+  convention-bound; a fixed shape for our templates keeps it reliable.
+- **The inventory across versions:** effects that come and go between releases, so a user can
+  carry an effect forward or try a new one before including it.
 
 ## Waiting on
 
