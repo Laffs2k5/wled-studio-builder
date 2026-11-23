@@ -173,7 +173,9 @@ class JobQueue:
             raise KeyError(jid)
         job = json.loads(p.read_text())
         rep = self._path(jid) / "gate-report.json"
-        if rep.exists():
+        # Only once the job has finished: before that the runner may be halfway
+        # through writing the report.
+        if job["state"] in ("passed", "failed") and rep.exists():
             job["report"] = json.loads(rep.read_text())
         return job
 

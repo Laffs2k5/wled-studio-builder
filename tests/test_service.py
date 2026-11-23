@@ -33,7 +33,7 @@ def fake_runner(passed=True):
 
 
 class ServiceTests(unittest.TestCase):
-    def start(self, passed=True, token=None):
+    def start(self, passed=True, token=None, runner=None):
         tmp = Path(tempfile.mkdtemp())
         (tmp / "pins").mkdir()
         (tmp / "pins" / "p.json").write_text(json.dumps({"name": "p", "targets": {"board": {"verified": {"windows": {}}}}}))
@@ -43,7 +43,7 @@ class ServiceTests(unittest.TestCase):
                "WLED_STUDIO_SERVICE_BIND": "127.0.0.1:0"}
         if token:
             env["WLED_STUDIO_SERVICE_TOKEN"] = token
-        srv = service.serve(service.Config(env), runner=fake_runner(passed))
+        srv = service.serve(service.Config(env), runner=runner or fake_runner(passed))
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         self.addCleanup(srv.shutdown)
         self.base = f"http://127.0.0.1:{srv.server_address[1]}"
@@ -89,6 +89,28 @@ class ServiceTests(unittest.TestCase):
         self.assertIn(b"GATE PASSED", self.call("GET", f"/jobs/{job['id']}/log")[1])
         self.assertEqual(self.call("GET", f"/jobs/{job['id']}/firmware.bin"), (200, b"\xe9firmware"))
         self.assertEqual(len(self.call("GET", "/jobs")[1]), 1)
+
+    def test_report_is_hidden_while_the_job_runs(self):
+        # The gate writes its report before it exits; a poll in between must not
+        # read a half-written file.
+        writing, release = threading.Event(), threading.Event()
+
+        def run(cfg, job, job_dir):
+            (job_dir / "gate-report.json").write_text('{"pass')
+            writing.set()
+            release.wait(5)
+            (job_dir / "gate-report.json").write_text(json.dumps({"passed": True}))
+            return 0
+
+        self.start(runner=run)
+        _, job = self.call("POST", "/jobs", {"pins": "p.json", "target": "board", "usermods": ["my_fx"]})
+        self.assertTrue(writing.wait(5))
+        status, running = self.call("GET", f"/jobs/{job['id']}")
+        release.set()
+        self.assertEqual(status, 200)
+        self.assertEqual(running["state"], "running")
+        self.assertNotIn("report", running)
+        self.assertEqual(self.wait(job["id"])["report"], {"passed": True})
 
     def test_failed_job_has_no_firmware(self):
         self.start(passed=False)
