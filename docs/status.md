@@ -13,8 +13,8 @@ Updated 2026-11-23.
     newer QuickESPNow pin and `origin_remote: false`;
   - x86-64 Linux results are recorded per board where they build. QuinLED's override names some
     usermods in the wrong case for Linux; fixed automatically.
-- **QuinLED 16.0.0:** dig-next-2 reproduced with only a new pins file, found with `discover.py`;
-  the matrix covers its other 10 boards.
+- **QuinLED 16.0.0:** **all 11 boards** reproduce the vendor image apart from the ELF hash on
+  Windows, with only a new pins file found with `discover.py`; x86-64 Linux results recorded.
 - **The gate** (`gate.py`): stock build checked, custom build, linker inputs compared (only the
   usermods' objects may be new), size against the app slot. It passes for the example effect, on
   Windows and in the container (CI).

@@ -28,7 +28,22 @@
         "sha256": "b720fa34c3fc29371876cebf2a58b3de238da05f8ff9c2c34e0cdb615770402d",
         "size": 1273152
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "a540d79a05c5faa1e0102466431dacbdfc29b2ddce75807cf0953167d41ddc78",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "b322a0606f66f0fc4413cfd9ab072500c24cecbea9e0ca8be72e3a15aadc2c39",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "an_penta_mini": {
       "reference": {
@@ -36,7 +51,22 @@
         "sha256": "257de598b78d9408a2bde7e07097bbe23c302470fcafb9645cb191f2a9fba76d",
         "size": 1233760
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "6733eea1dcae4f47164486bfcbdcb2bde43f2de237175fd8b9b331f34b263e60",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "7bba9c7936446dd44652e59a0ae431c1c6dd687633c5366ce74b478c10703209",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "an_penta_plus": {
       "reference": {
@@ -44,7 +74,22 @@
         "sha256": "875600cb6dc2afb5ce4df9f51ee191cbe113b1091f0673fc471b115421906a75",
         "size": 1292816
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "3ead98b1e45218f7c56e7e07a519fdf209a42eeeccbc9a0143fd2710c923c2f6",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "8324ce676baeb6cb5431fd2205979d0f1b06b95c61d293fd741aff045eae1e6e",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Octa_32-8L": {
       "reference": {
@@ -52,7 +97,22 @@
         "sha256": "9e6d15bd5893272ba02a84f084f2efe06f51ba1e07de96da6d1eb7aaa8c5fc30",
         "size": 1334592
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "11944cc7b8db9200da4d6d22a11ce4a09c9b0fb8c9a94f6a4af75e3bcc3a4a94",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "6cf87a8e53a6d51a2dcd8158b68eeba1895f0ecf075920c833121e90222b7b67",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Octa_32-8L-Temp": {
       "reference": {
@@ -60,7 +120,22 @@
         "sha256": "0b17e66b34d3cfa12f735289c9a3c2a1676fb0d3c52980f17274f674e50cd786",
         "size": 1334576
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "0ad48f71f4f4fe0e6d9580c0aea1bcb14cdd3f73326f8fcb778a2eadea46088a",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "3f757eff081ded03269ff2a6fe8bda22f0a20e50dee886c5ccfe11380af877a1",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Quad-V3": {
       "reference": {
@@ -68,7 +143,22 @@
         "sha256": "94dd7a9daec39e60b7977866e564a2aa22387c42cd33e5dae2ca0e2bf8a6724e",
         "size": 1335824
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "3002501da9b5aa08c61d9bcc293a3a558fe42b1eecff78776d892f059b8736e4",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "7f29da015899d197b68eb04dc60512161af49e9cf875c39ec8ade44872cc2661",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Quad-V3-AEplus": {
       "reference": {
@@ -76,7 +166,22 @@
         "sha256": "0ccf9441ff12ae95a230cffc3046a7e11020a59fbb27aba68ba4090ee3cba639",
         "size": 1316624
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "b7031863903fb798852374fba708b33e76e1b4a3594d174ca761753f03515151",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "44b4b6c146a32fc2adf9fe57853a7a1b3ec2d1eb0a0bb0bf8cb19f57a8464a21",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Uno-V3": {
       "reference": {
@@ -84,7 +189,22 @@
         "sha256": "44ef8da408da9784df4e3b02337731a73f31924630eb5c6655b07ac417dbcdc8",
         "size": 1335760
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "60daa9ca92be55dbb55c4cac57aac3aa66843930067f11064b14589cd62f97cd",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "b244318fe3684f05baf2226b6ad8d231f10c9f51bace4fe0b5cfbdcadc2d5e53",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-Uno-V3-AEplus": {
       "reference": {
@@ -92,7 +212,22 @@
         "sha256": "d7c94248c4a00f99ef1933dd4b12d0e367e69fa320dce2d05f3d846691265fae",
         "size": 1316608
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "d05ff074054d9e1c4f2f5fb52e4f044e6c6491b8f88de6882ef1696e1bfa132e",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "a0ada23b1eeec3641fd0e7fcbc21cfad82638fcbcf4e426e931bd38b958e6377",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     },
     "dig-next-2": {
       "reference": {
@@ -105,7 +240,15 @@
           "matches_reference": true,
           "normalized_sha256": "7e84dc27f3a0480b7bc38e128c2b03f74e669a557c8362a540893e9e40732ae6",
           "seen": [
-            "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)"
+            "2026-11-23 Windows 11 ARM64 (x86-64 toolchain emulated)",
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "109c82a94fed0a9cf4e0be56291d2c1ecce8ceb4c5fdff65b58176c136992798",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
           ]
         }
       }
@@ -116,7 +259,22 @@
         "sha256": "e80ce57c389da1a00085962a8146d9e77ef1da1ff2d87003a61d69e6433da25d",
         "size": 1309616
       },
-      "verified": {}
+      "verified": {
+        "windows": {
+          "matches_reference": true,
+          "normalized_sha256": "5b38e64d89414ebfc8c0b5c130147ddf84ded02e2612b500bab4341581505345",
+          "seen": [
+            "2026-11-23 GitHub windows-latest (matrix)"
+          ]
+        },
+        "linux-x86_64": {
+          "matches_reference": false,
+          "normalized_sha256": "6ae234adf67881a9c6834a46093daba8f41fb7f14dc0c112b7f2a7a7bf0a8992",
+          "seen": [
+            "2026-11-23 GitHub ubuntu-latest (matrix)"
+          ]
+        }
+      }
     }
   },
   "notes": [

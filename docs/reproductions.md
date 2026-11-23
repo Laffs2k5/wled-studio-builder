@@ -99,6 +99,8 @@ only a new pins file**, written in four steps:
    stamp and the ELF hash, and `discover.py stamp-at` read the vendor's stamp from it: 1777889181
    (2026-05-04 10:06 UTC).
 
-**Result:** dig-next-2 matches the vendor image apart from the ELF hash (Windows, 2026-11-23). The
-other 10 boards: the matrix.
+**Result (2026-11-23): all 11 boards match the vendor image apart from the ELF hash** on
+GitHub's Windows runner (the matrix); dig-next-2 also on a local ARM64 machine. x86-64 Linux
+results are recorded for all 11. Nothing in the pins file changed per board: the release-wide
+settings found for dig-next-2 were enough for the other 10.
 
