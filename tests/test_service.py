@@ -28,6 +28,7 @@ def fake_runner(passed=True):
         if passed:
             (job_dir / "custom").mkdir()
             (job_dir / "custom" / "firmware.bin").write_bytes(b"\xe9firmware")
+            (job_dir / "custom" / "effects.json").write_text('{"effects": [{"id": 0, "name": "Solid", "meta": ""}]}')
         return 0 if passed else 1
     return run
 
@@ -88,6 +89,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(job["report"], {"passed": True})
         self.assertIn(b"GATE PASSED", self.call("GET", f"/jobs/{job['id']}/log")[1])
         self.assertEqual(self.call("GET", f"/jobs/{job['id']}/firmware.bin"), (200, b"\xe9firmware"))
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/effects.json")[1]["effects"][0]["name"], "Solid")
         self.assertEqual(len(self.call("GET", "/jobs")[1]), 1)
 
     def test_report_is_hidden_while_the_job_runs(self):
@@ -118,6 +120,7 @@ class ServiceTests(unittest.TestCase):
         job = self.wait(job["id"])
         self.assertEqual(job["state"], "failed")
         self.assertEqual(self.call("GET", f"/jobs/{job['id']}/firmware.bin")[0], 409)
+        self.assertEqual(self.call("GET", f"/jobs/{job['id']}/effects.json")[0], 409)
 
     def test_validation(self):
         self.start()

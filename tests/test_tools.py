@@ -7,7 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "studio"))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "studio"))
 import build  # noqa: E402
 import discover  # noqa: E402
 import gate  # noqa: E402
@@ -343,3 +344,71 @@ class PinTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ManifestTests(unittest.TestCase):
+    """The effect list of a built image (manifest.py)."""
+
+    def setUp(self):
+        sys.path.insert(0, str(ROOT / "studio"))
+        import manifest
+        self.m = manifest
+
+    def test_c_strings(self):
+        self.assertEqual(self.m.c_string('"a\\\\b" "c\\"d" "\\x41\\101\\n"'), 'a\\bc"dAA\n')
+
+    def test_add_effect_follows_wleds_rules(self):
+        fx = ["Solid", "RSVD", "RSVD", "Blink"]
+        self.assertEqual(self.m.add_effect(fx, 2, "Two"), 2)          # a placeholder is replaced
+        self.assertEqual(self.m.add_effect(fx, 3, "Again"), 255)      # an added effect isn't
+        self.assertEqual(self.m.add_effect(fx, 255, "Any"), 1)        # 255: the first placeholder
+        self.assertEqual(self.m.add_effect(fx, 200, "Far"), 4)        # past the end: appended
+        self.assertEqual(fx, ["Solid", "Any", "Two", "Blink", "Far"])
+
+    def test_builtin_effects_from_the_preprocessed_source(self):
+        pre = """
+        class WS2812FX { WS2812FX() : _modeCount(5) {} };
+        static const char _data_FX_MODE_STATIC[] __attribute__((section(".x"))) = "Solid";
+        static const char _data_FX_MODE_BLINK[] = "Blink@!,Duty;!,!;!;01";
+        static const char _data_FX_MODE_RAIN[] = "Rain" "@!,Spawn;!,!;!";
+        static const char _data_RESERVED[] = "RSVD";
+        void WS2812FX::setupEffectData() {
+          _mode.push_back(&mode_static);
+          addEffect(1, &mode_blink, _data_FX_MODE_BLINK);
+          // addEffect(2, &mode_old, _data_FX_MODE_OLD);   commented out
+          addEffect(3, &mode_rain, _data_FX_MODE_RAIN);
+          addEffect(1, &mode_rain, _data_FX_MODE_RAIN);     // taken: not added
+        }
+        void other() { addEffect(4, &x, _data_FX_MODE_BLINK); }
+        """
+        fx = self.m.builtin_effects(pre)
+        self.assertEqual(fx, ["Solid", "Blink@!,Duty;!,!;!;01", "RSVD", "Rain@!,Spawn;!,!;!", "RSVD"])
+        m = self.m.manifest(fx, {"env": "x"})
+        self.assertEqual(m["effects"][1], {"id": 1, "name": "Blink", "meta": "!,Duty;!,!;!;01"})
+        self.assertEqual(m["effects"][0], {"id": 0, "name": "Solid", "meta": ""})
+
+    def test_a_macro_left_as_an_id_is_an_error(self):
+        pre = 'x _modeCount(2) static const char _data_FX_MODE_STATIC[] = "Solid";\n' \
+              "void WS2812FX::setupEffectData() { addEffect(FX_MODE_X, &f, _data_FX_MODE_STATIC); }"
+        with self.assertRaises(ValueError):
+            self.m.builtin_effects(pre)
+
+    def test_usermod_effects_by_the_templates_convention(self):
+        src = (ROOT / "examples" / "usermods" / "studio_example_fx" / "studio_example_fx.cpp").read_text()
+        found = self.m.usermod_effects(src)
+        self.assertEqual(found, [(254, "Studio Comet@Speed,Tail;!;!;1;sx=128,ix=200")])
+        fx = ["Solid"] + ["X"] * 9
+        self.assertEqual(self.m.place_usermod(fx, *found[0]), 254)
+        self.assertEqual((len(fx), fx[10], fx[253]), (255, "RSVD", "RSVD"))
+        self.assertEqual(self.m.place_usermod(["Solid"] * 20, 5, "Late"), 255)  # the id is taken already
+
+    def test_preprocess_runs_the_compile_command_with_E(self):
+        with tempfile.TemporaryDirectory() as d:
+            echo = Path(d) / "echo.py"
+            echo.write_text("import sys; print(' '.join(sys.argv[1:]))")
+            entry = {"directory": d, "file": "wled00/FX.cpp",
+                     "arguments": [sys.executable, str(echo), "-Dx", "-o", "FX.o", "-c", "wled00/FX.cpp"]}
+            self.assertEqual(self.m.preprocess(entry).strip(), "-Dx -E wled00/FX.cpp")
+            self.assertIs(self.m.compile_entry([{"file": "a/b.cpp"}, entry], "wled00/FX.cpp"), entry)
+            with self.assertRaises(KeyError):
+                self.m.compile_entry([], "wled00/FX.cpp")

@@ -92,6 +92,24 @@ jobs:
             --work /work --out /out
           jq '{passed, checks, objects: {identical: .objects.identical, added: .objects.added, unexpected: .objects.unexpected}}' gate/gate-report.json
 
+      - name: Effect manifest of the custom image, against the controller's known 16.0.1 list
+        # ids 0-219 with placeholders at 142 and 169-171 (read from a Dig-Next-2 running
+        # QuinLED's 16.0.1), plus the example effect padded to its fixed id 254
+        run: |
+          jq -r '.effects_manifest' gate/custom/build-report.json
+          python3 - <<'PY'
+          import json
+          m = json.load(open("gate/custom/effects.json"))
+          fx = {e["id"]: e for e in m["effects"]}
+          gaps = [i for i in range(220) if fx[i]["name"] == "RSVD"]
+          assert gaps == [142, 169, 170, 171], gaps
+          assert [fx[i]["name"] for i in (0, 57, 219)] == ["Solid", "Lightning", "Slow Transition"], [fx[i] for i in (0, 57, 219)]
+          assert fx[57]["meta"] == "!,!,,,,,Overlay;!,!;!", fx[57]
+          assert all(fx[i]["name"] == "RSVD" for i in range(220, 254))
+          assert fx[254]["name"] == "Studio Comet" and len(fx) == 255, fx.get(254)
+          print("effect manifest ok:", len(fx), "entries;", m["source"]["usermods"])
+          PY
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -100,6 +118,7 @@ jobs:
             out/build-report.json
             out/packages.txt
             gate/gate-report.json
+            gate/custom/effects.json
           if-no-files-found: ignore
 
       - name: Image metadata

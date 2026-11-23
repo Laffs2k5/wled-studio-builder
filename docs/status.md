@@ -15,6 +15,13 @@ Updated 2026-11-23.
     usermods in the wrong case for Linux; fixed automatically.
 - **QuinLED 16.0.0:** **all 11 boards** reproduce the vendor image apart from the ELF hash on
   Windows, with only a new pins file found with `discover.py`; x86-64 Linux results recorded.
+- **The effect manifest** (`manifest.py`, 2026-11-23): `build.py` writes `effects.json`, the
+  image's effects as `/json/eff` and `/json/fxdata` will report them. Built-ins come from `FX.cpp`
+  run through the preprocessor with the build's own compile command (PlatformIO's compile
+  database), and `setupEffectData()` replayed under `addEffect()`'s rules (placeholders, 255 takes
+  the first gap, an id past the end is appended). Usermod effects are read in the templates' fixed-id
+  shape. CI checks the container's custom image against a Dig-Next-2's known 16.0.1 list. The job
+  service serves it (`/jobs/<id>/effects.json`), for wled-studio's preflight.
 - **The gate** (`gate.py`): stock build checked, custom build, linker inputs compared (only the
   usermods' objects may be new), size against the app slot. It passes for the example effect, on
   Windows and in the container (CI).
@@ -37,17 +44,9 @@ Updated 2026-11-23.
    checkout instead of the stand-ins.
 4. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
    driven from the app.
-5. **A build manifest** for wled-studio's preflight, which checks a library against a firmware
-   before it is flashed: the built image's effects (id, name, metadata).
 
 ## Open design items
 
-- **How to write the build manifest.** The gate already proves that every stock object file is
-  unchanged, so a custom image's built-in effects are the vendor release's. The manifest can
-  therefore be the release's effect list, recorded once per pins target (read from a device running
-  it, or from the sources at the pinned commit), plus the usermods' own effects: ids from their
-  `addEffect` calls, metadata from their `_data_…` strings. Reading usermod sources is
-  convention-bound; a fixed shape for our templates keeps it reliable.
 - **The inventory across versions:** effects that come and go between releases, so a user can
   carry an effect forward or try a new one before including it.
 

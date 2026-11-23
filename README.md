@@ -24,6 +24,10 @@ the usermods from their upstream repositories at pinned commits.
 - **`studio/imgdiff.py`** explains every byte that differs between two ESP32 app images, and
   fails on anything it can't explain.
 - **`studio/elfdiff.py`** compares two builds function by function, with addresses normalised.
+- **`studio/manifest.py`** lists a built image's effects (id, name, metadata) as the device will
+  report them, written by `build.py` as `effects.json`: WLED's built-ins from the preprocessed
+  `FX.cpp` (so the build's flags count), replayed under `addEffect()`'s rules, and your usermods'
+  effects at their fixed ids. wled-studio checks a look library against it before a flash.
 - **`studio/gate.py`** runs the whole gate before a flash: stock build checked, custom build, linker
   inputs compared, size checked.
 - **`studio/service.py`** is a small job service for the wled-studio app: gate builds and

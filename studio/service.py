@@ -15,6 +15,7 @@ jobs that passed the gate, the firmware image.
   GET  /jobs/<id>             one job: state (queued, running, passed, failed) and gate report
   GET  /jobs/<id>/log         the job's build log (last 200 kB)
   GET  /jobs/<id>/firmware.bin  only if the job passed the gate
+  GET  /jobs/<id>/effects.json  the custom image's effect list (id, name, metadata), if it passed
   POST /previews              {"usermods": ["name", ...]}: compile them to WebAssembly for the
                               browser preview (preview/); Emscripten is installed into the work
                               volume on first use (EMSDK_VERSION)
@@ -270,6 +271,12 @@ def make_handler(cfg: Config, jobs: JobQueue):
                     if job.get("kind") != "preview" or job["state"] != "passed" or not f.exists():
                         return self._send(409, {"detail": "no compiled preview for this job"})
                     return self._send(200, f.read_bytes(), PREVIEW_FILES[parts[3]])
+                if len(parts) == 3 and parts[0] == "jobs" and parts[2] == "effects.json":
+                    job = jobs.get(parts[1])
+                    f = jobs._path(parts[1]) / "custom" / "effects.json"
+                    if job.get("kind", "gate") != "gate" or job["state"] != "passed" or not f.exists():
+                        return self._send(409, {"detail": "no effect list for this job"})
+                    return self._send(200, f.read_bytes())
                 if len(parts) == 3 and parts[0] == "jobs" and parts[2] == "firmware.bin":
                     job = jobs.get(parts[1])
                     fw = jobs._path(parts[1]) / "custom" / "firmware.bin"

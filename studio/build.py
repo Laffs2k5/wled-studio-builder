@@ -380,9 +380,20 @@ def main() -> int:
     except subprocess.CalledProcessError as e:
         print(f"warning: could not list packages ({e})", flush=True)
 
+    # the effect list the image will report, for wled-studio's preflight (best effort: a missing
+    # manifest is recorded, and the build still counts)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import manifest as fxmanifest  # noqa: E402
+    try:
+        m = fxmanifest.from_build(wled, pins["env"], [p.resolve() for p in args.usermod], env)
+        (out / "effects.json").write_text(json.dumps(m, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        manifest_status = f"ok, {len(m['effects'])} effects"
+    except Exception as e:  # noqa: BLE001 - recorded in the report
+        manifest_status = f"failed: {e.__class__.__name__}: {e}"[:500]
+        print(f"warning: no effect manifest ({manifest_status})", flush=True)
+
     # 5. compare with the vendor's image
     ref = pins.get("reference")
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     import imgdiff  # noqa: E402
     ours = imgdiff.parse(out / "firmware.bin")
     report = {
@@ -401,6 +412,7 @@ def main() -> int:
         "override_commit": ov["commit"],
         "env": pins["env"],
         "extra_usermods": [p.name for p in args.usermod],
+        "effects_manifest": manifest_status,
         "usermod_case_fixes": case_fixes,
         "autocrlf": run(["git", "config", "--get", "core.autocrlf"], cwd=wled, capture=True)
         if subprocess.run(["git", "config", "--get", "core.autocrlf"], cwd=wled,
