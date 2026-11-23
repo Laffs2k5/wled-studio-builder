@@ -17,7 +17,7 @@ WS2812FX strip;
 SegmentRuntime SEGENV_;
 
 namespace {
-struct EffectEntry { mode_ptr fn; std::string metadata; };
+struct EffectEntry { WS2812FX::mode_ptr fn; std::string metadata; };
 std::vector<EffectEntry>& effects() { static std::vector<EffectEntry> v; return v; }
 std::vector<Usermod*>& usermods() { static std::vector<Usermod*> v; return v; }
 Segment seg;
@@ -65,7 +65,7 @@ uint32_t Segment::color_from_palette(uint16_t i, bool mapping, bool, uint8_t mco
 }
 
 uint8_t WS2812FX::getModeCount() const { return uint8_t(effects().size()); }
-uint8_t WS2812FX::addEffect(uint8_t id, mode_ptr fn, const char* metadata) {
+uint8_t WS2812FX::addEffect(uint8_t id, WS2812FX::mode_ptr fn, const char* metadata) {
   // as WLED: an id below the count replaces nothing here; anything else appends at the end
   if (id < effects().size()) return 255;
   if (effects().size() >= 255) return 255;

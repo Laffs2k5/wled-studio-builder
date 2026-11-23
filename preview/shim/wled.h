@@ -56,8 +56,6 @@ struct JsonObject {
 #define B(c) (uint8_t(c))
 #define W(c) (uint8_t((c) >> 24))
 
-typedef void (*mode_ptr)(void);
-
 struct SegmentRuntime {
   uint32_t call = 0, step = 0;
   uint16_t aux0 = 0, aux1 = 0;
@@ -86,7 +84,9 @@ struct Segment {
   uint32_t color_from_palette(uint16_t i, bool mapping, bool moving, uint8_t mcol, uint8_t pbri = 255) const;
 };
 
+// mode_ptr is nested, as in WLED: a usermod that names it unqualified fails there, so it fails here too
 struct WS2812FX {
+  typedef void (*mode_ptr)(void);
   uint32_t now = 0;
   Segment* _currentSegment = nullptr;
   uint8_t getModeCount() const;
@@ -140,8 +140,8 @@ um_data_t* simulateSound(uint8_t simulationId);
 class Usermod {
  public:
   virtual ~Usermod() = default;
-  virtual void setup() {}
-  virtual void loop() {}
+  virtual void setup() = 0;  // pure virtual, as in WLED
+  virtual void loop() = 0;
   virtual void addToJsonInfo(JsonObject&) {}
   virtual uint16_t getId() { return 1; }
 };

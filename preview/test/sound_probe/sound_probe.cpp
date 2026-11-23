@@ -30,6 +30,7 @@ class SoundProbe : public Usermod {
     strip.addEffect(1, &mode_probe, kData);
     strip.addEffect(2, &mode_counter, kCounterData);
   }
+  void loop() override {}
 };
 static SoundProbe sound_probe;
 REGISTER_USERMOD(sound_probe);

@@ -17,6 +17,10 @@ Run effect usermods written for WLED in the browser, without flashing anything.
   its own simulation (`preview_set` key 12 picks it, as WLED's sound simulation setting does).
   Effects keep their ids as on the device; a usermod that registers at a fixed id behind `RSVD`
   placeholders gets the same id here.
+- **As strict as WLED where it bit us:** `mode_ptr` is nested (`WS2812FX::mode_ptr`) and
+  `Usermod::setup()`/`loop()` are pure virtual, as in WLED. A usermod that named `mode_ptr` bare or
+  had no `loop()` passed the preview and failed the real build (2026-11-23), so the shim now rejects
+  both. Anything else the shim allows may still fail in WLED: the gate's build is the check.
 
 ```bash
 source ~/emsdk/emsdk_env.sh
