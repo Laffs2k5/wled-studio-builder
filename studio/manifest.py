@@ -126,7 +126,8 @@ def usermod_effects(source: str) -> list[tuple[int, str]]:
     datas = {m.group(1): c_string(m.group(2))
              for m in re.finditer(r"\bconst\s+char\s+(\w+)\s*\[\s*\][^=;{]*=\s*((?:" + _STRING + r"\s*)+);", source)}
     out = []
-    for id_expr, data_name in _CALL_RE.findall(source):
+    # addEffect(kId, &fn, kData), or a helper called the same way (add_fixed(kId, &fn, kData))
+    for id_expr, data_name in re.findall(r"\b\w+\s*\(\s*(\w+)\s*,\s*&\s*[\w:]+\s*,\s*(\w+)\s*\)", source):
         if id_expr in ids and data_name in datas:
             out.append((ids[id_expr], datas[data_name]))
     return out

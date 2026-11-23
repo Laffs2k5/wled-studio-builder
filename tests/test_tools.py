@@ -402,6 +402,18 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual((len(fx), fx[10], fx[253]), (255, "RSVD", "RSVD"))
         self.assertEqual(self.m.place_usermod(["Solid"] * 20, 5, "Late"), 255)  # the id is taken already
 
+    def test_usermod_effects_through_a_registration_helper(self):
+        src = """
+        constexpr uint8_t kAId = 240;
+        const char kAData[] PROGMEM =
+            "A@Speed;!;;1";
+        constexpr uint8_t kBId = 241;
+        const char kBData[] PROGMEM = "B@;!;;1";
+        bool add_fixed(uint8_t id, mode_ptr fn, const char* data) { return strip.addEffect(id, fn, data) == id; }
+        void setup() { add_fixed(kAId, &mode_a, kAData); add_fixed(kBId, &mode_b, kBData); }
+        """
+        self.assertEqual(self.m.usermod_effects(src), [(240, "A@Speed;!;;1"), (241, "B@;!;;1")])
+
     def test_preprocess_runs_the_compile_command_with_E(self):
         with tempfile.TemporaryDirectory() as d:
             echo = Path(d) / "echo.py"
