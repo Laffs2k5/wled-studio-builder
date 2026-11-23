@@ -57,4 +57,7 @@ the sibling repo `wled-studio`.
 - **External usermods must be named `wled-…`** in their `library.json` (or be listed by a
   predictable URL name), or WLED's build doesn't treat them as modules and `wled.h` isn't found.
   WLED's own `mode_static()` isn't exported; an effect needs its own fallback.
+- **The image's Python packages are locked with hashes** (`docker/requirements.txt`). To change
+  PlatformIO's version, edit `docker/requirements.in` and regenerate:
+  `uv pip compile docker/requirements.in --universal --python-version 3.11 --generate-hashes --no-header -o docker/requirements.txt`.
 - PowerShell `*>` redirection writes UTF-16 logs; read them with `iconv -f utf-16`.
