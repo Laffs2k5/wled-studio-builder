@@ -30,6 +30,8 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -52,11 +54,26 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def download(url: str, dest: Path) -> None:
+def download(url: str, dest: Path, attempts: int = 3, sleep=time.sleep) -> None:
+    """Fetch url to dest. A server error (5xx) or a network failure is retried with backoff:
+    raw.githubusercontent.com answers 503 "Backend.max_conn reached" now and then, and one
+    failed fetch shouldn't fail a firmware build. A 4xx fails at once."""
     print(f"+ download {url}", flush=True)
     req = urllib.request.Request(url, headers={"User-Agent": "wled-studio"})
-    with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
-        shutil.copyfileobj(r, f)
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
+                shutil.copyfileobj(r, f)
+            return
+        except urllib.error.HTTPError as e:
+            if e.code < 500 or attempt == attempts:
+                raise
+            print(f"  {e.code} {e.reason}; retrying ({attempt}/{attempts})", flush=True)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            if attempt == attempts:
+                raise
+            print(f"  {e}; retrying ({attempt}/{attempts})", flush=True)
+        sleep(5 * 2 ** (attempt - 1))
 
 
 def tool_version(cmd: list[str]) -> str:

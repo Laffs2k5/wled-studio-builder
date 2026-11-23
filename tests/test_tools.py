@@ -44,6 +44,46 @@ def make_image(segments, elf_sha=b"\x11" * 32):
     return bytes(raw)
 
 
+class DownloadTests(unittest.TestCase):
+    """download() retries a server error or a network failure, not a client error."""
+
+    def run_with(self, outcomes):
+        import io
+        import urllib.error
+        from unittest import mock
+        calls = []
+
+        def fake(req, timeout):
+            calls.append(req.full_url)
+            o = outcomes.pop(0)
+            if isinstance(o, Exception):
+                raise o
+            return io.BytesIO(o)
+        dest = Path(tempfile.mkdtemp()) / "f"
+        with mock.patch("urllib.request.urlopen", fake):
+            try:
+                build.download("https://x/f", dest, sleep=lambda s: None)
+                return calls, dest.read_bytes()
+            except urllib.error.URLError as e:
+                return calls, e
+
+    def http(self, code):
+        import urllib.error
+        return urllib.error.HTTPError("https://x/f", code, "err", {}, None)
+
+    def test_retries_a_503(self):
+        calls, body = self.run_with([self.http(503), b"ok"])
+        self.assertEqual((len(calls), body), (2, b"ok"))
+
+    def test_gives_up_after_three(self):
+        calls, err = self.run_with([self.http(503)] * 3)
+        self.assertEqual((len(calls), err.code), (3, 503))
+
+    def test_a_404_fails_at_once(self):
+        calls, err = self.run_with([self.http(404), b"never"])
+        self.assertEqual((len(calls), err.code), (1, 404))
+
+
 class ImgDiffTests(unittest.TestCase):
     def write(self, data):
         f = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
