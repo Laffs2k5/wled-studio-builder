@@ -11,7 +11,7 @@ srcs=()
 for d in "$@"; do srcs+=("$d"/*.cpp); done
 em++ -std=c++17 -O2 -I"$here/shim" "$here/shim/shim.cpp" "${srcs[@]}" \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH=1 \
-  -sEXPORTED_FUNCTIONS=_preview_setup,_preview_effect_count,_preview_effect_name,_preview_effect_metadata,_preview_select,_preview_set,_preview_length,_preview_frame \
+  -sEXPORTED_FUNCTIONS=_preview_setup,_preview_effect_count,_preview_effect_name,_preview_effect_metadata,_preview_select,_preview_set,_preview_length,_preview_frame,_preview_audio \
   -sEXPORTED_RUNTIME_METHODS=UTF8ToString,HEAPU32 \
   -o "$out/preview.mjs"
 echo "built $out/preview.mjs and preview.wasm"

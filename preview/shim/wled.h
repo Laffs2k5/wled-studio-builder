@@ -72,6 +72,7 @@ struct Segment {
   uint8_t speed = 128, intensity = 128, custom1 = 128, custom2 = 128, custom3 = 16;
   bool check1 = false, check2 = false, check3 = false;
   uint8_t palette = 0;
+  uint8_t soundSim = 0;
   uint32_t colors[3] = {RGBW32(255, 160, 0, 0), 0, 0};
   std::vector<uint32_t> pixels;
 
@@ -117,6 +118,24 @@ template <typename T> T map(T x, T in_min, T in_max, T out_min, T out_max) {
 }
 template <typename T, typename U> auto min(T a, U b) -> decltype(a < b ? a : b) { return a < b ? a : b; }
 template <typename T, typename U> auto max(T a, U b) -> decltype(a > b ? a : b) { return a > b ? a : b; }
+
+// Sound: the usermod data exchange WLED's sound effects use. FX.cpp's getAudioData() is static
+// there, so a usermod effect asks the usermod manager for AudioReactive's data and falls back to
+// WLED's sound simulation, as FX.cpp does. In the preview the data comes from preview_audio(),
+// or from our own simulation when no level is set. Layout as WLED's: [0] volumeSmth (float),
+// [1] volumeRaw (float), [2] fftResult (uint8_t[16]), [3] samplePeak (uint8_t), [4] FFT_MajorPeak
+// (float), [5] my_magnitude (float), [6] maxVol (uint8_t), [7] binNum (uint8_t).
+typedef enum { UMT_BYTE = 0, UMT_UINT16, UMT_INT16, UMT_UINT32, UMT_INT32, UMT_FLOAT, UMT_DOUBLE, UMT_BYTE_ARR,
+               UMT_UINT16_ARR, UMT_INT16_ARR, UMT_UINT32_ARR, UMT_INT32_ARR, UMT_FLOAT_ARR, UMT_DOUBLE_ARR } um_types_t;
+typedef struct UM_Exchange_Data {
+  size_t u_size = 0;
+  um_types_t* u_type = nullptr;
+  void** u_data = nullptr;
+} um_data_t;
+#define USERMOD_ID_RESERVED 0
+#define USERMOD_ID_AUDIOREACTIVE 32
+namespace UsermodManager { bool getUMData(um_data_t** data, uint8_t mod_id = USERMOD_ID_RESERVED); }
+um_data_t* simulateSound(uint8_t simulationId);
 
 class Usermod {
  public:

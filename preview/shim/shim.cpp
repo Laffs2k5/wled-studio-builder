@@ -97,6 +97,49 @@ uint32_t color_wheel(uint8_t pos) {
 
 // --- the C API for JavaScript ---------------------------------------------------
 
+// --- sound ----------------------------------------------------------------------------
+namespace {
+float volume_smth = 0, volume_raw = 0, major_peak = 440, magnitude = 0;
+uint8_t fft[16] = {0}, sample_peak = 0, max_vol = 31, bin_num = 8;
+void* sound_ptrs[8] = {&volume_smth, &volume_raw, fft, &sample_peak, &major_peak, &magnitude, &max_vol, &bin_num};
+um_types_t sound_types[8] = {UMT_FLOAT, UMT_FLOAT, UMT_BYTE_ARR, UMT_BYTE, UMT_FLOAT, UMT_FLOAT, UMT_BYTE, UMT_BYTE};
+um_data_t sound = [] { um_data_t d; d.u_size = 8; d.u_type = sound_types; d.u_data = sound_ptrs; return d; }();
+float set_level = -1;  // < 0: no "mic" in the preview, effects get the simulation
+
+void fill_sound(float level, uint32_t now) {
+  volume_smth = level;
+  volume_raw = level;
+  magnitude = level * 4;
+  sample_peak = level > 200 ? 1 : 0;
+  for (int i = 0; i < 16; i++)  // a spectrum that leans to the bass and wobbles a little
+    fft[i] = uint8_t(fmin(255.0, level * (1.2 - i / 20.0) * (0.85 + 0.15 * sin(now / 150.0 + i))));
+}
+}  // namespace
+
+bool UsermodManager::getUMData(um_data_t** data, uint8_t mod_id) {
+  if (set_level < 0 || (mod_id != USERMOD_ID_AUDIOREACTIVE && mod_id != USERMOD_ID_RESERVED)) return false;
+  fill_sound(set_level, strip.now);
+  *data = &sound;
+  return true;
+}
+
+// Our own stand-in for WLED's simulation: a beat whose shape depends on the simulation id.
+um_data_t* simulateSound(uint8_t simulationId) {
+  const double t = strip.now / 1000.0;
+  double beat;
+  switch (simulationId) {
+    case 1: beat = fmod(t, 0.5) < 0.12 ? 1.0 : 0.15; break;                       // a stomp
+    case 2: beat = 0.5 + 0.5 * sin(t * 2 * M_PI * 10 / 13); break;                  // slow
+    case 3: beat = 0.5 + 0.5 * sin(t * 2 * M_PI * 14 / 3); break;                   // fast
+    default: beat = 0.5 + 0.5 * sin(t * 2 * M_PI * 2); break;                       // 120 bpm sine
+  }
+  fill_sound(float(beat * 255.0), strip.now);
+  return &sound;
+}
+
+/** The preview's "mic": a volume 0-255, or < 0 for none (effects then simulate). */
+EXPORT void preview_audio(float level) { set_level = level; }
+
 EXPORT void preview_setup(int length) {
   seg.pixels.assign(length > 0 ? length : 1, 0);
   seg.stop = uint16_t(seg.pixels.size());
@@ -136,6 +179,7 @@ EXPORT void preview_set(int key, int value) {
     case 5: seg.check1 = value; break; case 6: seg.check2 = value; break; case 7: seg.check3 = value; break;
     case 8: seg.palette = v; break;
     case 9: case 10: case 11: seg.colors[key - 9] = uint32_t(value); break;
+    case 12: seg.soundSim = v; break;
   }
 }
 EXPORT int preview_length() { return int(seg.pixels.size()); }

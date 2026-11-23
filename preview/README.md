@@ -9,7 +9,12 @@ Run effect usermods written for WLED in the browser, without flashing anything.
 - `build.sh OUT USERMOD_DIR…`: compiles the shim and the usermods with Emscripten into
   `preview.mjs` and `preview.wasm`.
 - The C API: `preview_setup(len)`, `preview_effect_count/name/metadata(id)`, `preview_select(id)`,
-  `preview_set(key, value)`, `preview_frame(now_ms)` (returns the pixels, `0xWWRRGGBB` per LED).
+  `preview_set(key, value)`, `preview_frame(now_ms)` (returns the pixels, `0xWWRRGGBB` per LED),
+  `preview_audio(level)`: the preview's "mic", a volume 0–255, or below 0 for none.
+- **Sound:** a sound effect in a usermod reads AudioReactive's data as WLED's own effects do,
+  `UsermodManager::getUMData(&um, USERMOD_ID_AUDIOREACTIVE)`, and falls back to
+  `simulateSound(SEGMENT.soundSim)`. The shim offers both: the level set with `preview_audio`, or
+  its own simulation (`preview_set` key 12 picks it, as WLED's sound simulation setting does).
   Effects keep their ids as on the device; a usermod that registers at a fixed id behind `RSVD`
   placeholders gets the same id here.
 

@@ -44,4 +44,6 @@ jobs:
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           preview/build.sh "$RUNNER_TEMP/preview" examples/usermods/studio_example_fx
           PREVIEW_DIR="$RUNNER_TEMP/preview" node --test preview/test/preview.test.mjs
+          preview/build.sh "$RUNNER_TEMP/sound" preview/test/sound_probe
+          SOUND_DIR="$RUNNER_TEMP/sound" node --test preview/test/sound.test.mjs
 
