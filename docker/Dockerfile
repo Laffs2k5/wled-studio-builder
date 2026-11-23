@@ -14,7 +14,6 @@ LABEL org.opencontainers.image.title="wled-studio-builder" \
       org.opencontainers.image.description="Reproducible, verifiable WLED firmware builds"
 
 ARG NODE_VERSION=22.23.5
-ARG PLATFORMIO_VERSION=6.2.0
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -46,8 +45,12 @@ RUN useradd --create-home --uid 10001 builder \
 USER builder
 WORKDIR /home/builder
 
+# PlatformIO and every dependency pinned by version and file hash (docker/requirements.txt,
+# generated from requirements.in with: uv pip compile --universal --python-version 3.11
+# --generate-hashes)
+COPY --chown=builder:builder docker/requirements.txt /home/builder/requirements.txt
 RUN python3 -m venv /home/builder/venv \
- && /home/builder/venv/bin/pip install --no-cache-dir platformio==${PLATFORMIO_VERSION}
+ && /home/builder/venv/bin/pip install --no-cache-dir --require-hashes -r /home/builder/requirements.txt
 ENV PATH=/home/builder/venv/bin:$PATH
 # WLED's UI build needs no npm install scripts; don't run 66 packages' scripts
 ENV NPM_CONFIG_IGNORE_SCRIPTS=true \
