@@ -86,3 +86,19 @@ Both built on Windows with `--clean` in the same work tree; the custom build add
 - **image:** 1,336,096 bytes (+1,312);
 - the clean stock rebuild still matches QuinLED's image apart from the ELF hash.
 
+## QuinLED, WLED 16.0.0 (pins/quinled-16.0.0.json)
+
+The May 2026 release, with MultiRelay instead of PowerManager. **Same tool, same builder image,
+only a new pins file**, written in four steps:
+
+1. `discover.py targets` mapped the release's 11 images to their envs in the override at the
+   release's commit;
+2. `discover.py refs` gave QuickESPNow's newest commit before the release (the same `193e991`);
+3. the checkout settings were carried over from 16.0.1 (Windows host, LF, no GitHub origin);
+4. a first build with a placeholder UI build time differed from the vendor's image only in that
+   stamp and the ELF hash, and `discover.py stamp-at` read the vendor's stamp from it: 1777889181
+   (2026-05-04 10:06 UTC).
+
+**Result:** dig-next-2 matches the vendor image apart from the ELF hash (Windows, 2026-11-23). The
+other 10 boards: the matrix.
+

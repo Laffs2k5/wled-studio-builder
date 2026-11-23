@@ -13,6 +13,8 @@ Updated 2026-11-23.
     newer QuickESPNow pin and `origin_remote: false`;
   - x86-64 Linux results are recorded per board where they build. QuinLED's override names some
     usermods in the wrong case for Linux; fixed automatically.
+- **QuinLED 16.0.0:** dig-next-2 reproduced with only a new pins file, found with `discover.py`;
+  the matrix covers its other 10 boards.
 - **The gate** (`gate.py`): stock build checked, custom build, linker inputs compared (only the
   usermods' objects may be new), size against the app slot. It passes for the example effect, on
   Windows and in the container (CI).
@@ -26,8 +28,8 @@ Updated 2026-11-23.
 
 ## Next
 
-1. More vendor releases (QuinLED 16.0.0, 0.15.x; stock WLED's esp32 builds), using
-   `discover.py` and the matrix.
+1. More vendor releases (QuinLED 0.15.x; stock WLED's esp32 builds), using `discover.py` and the
+   matrix.
 2. Hardening still open: pip `--require-hashes`; an apt snapshot; an `--offline` rerun with no
    network; `--read-only`. (The egress allowlist is done: wled-studio's compose runs the builder on
    an internal network behind a squid allowlist, tested end to end by its `firmware-e2e` workflow.)
