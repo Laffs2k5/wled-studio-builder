@@ -30,6 +30,13 @@ Updated 2026-11-23.
 - **Job service** (`service.py`) for the wled-studio app: gate builds and WebAssembly previews.
 - **Effect preview** (`preview/`): effect usermods compile unchanged to WebAssembly and render the
   frames their logic says (tested in Node).
+- **First real effects through the gate** (2026-11-23): wled-studio-effects (two effects at fixed
+  ids 240 and 241) passed the gate into QuinLED's Dig-Next-2 16.0.1 image: stock checked, only its
+  three objects added, the effect list as planned. It took two lessons, now built in: the preview
+  shim is as strict as WLED about `mode_ptr` (nested) and `Usermod::setup()`/`loop()` (pure
+  virtual), and a usermod's folder must not hold the gate's work folder (PlatformIO compiles every
+  source file under a library). Downloads retry a 5xx or network failure (a 503 from
+  raw.githubusercontent.com failed one run).
 - **CI:** unit tests; a matrix over every target on Windows and Linux (weekly too, for upstream
   drift); image build, test and publish; preview compile and frame tests.
 
