@@ -28,8 +28,9 @@ Updated 2026-11-23.
 
 1. More vendor releases (QuinLED 16.0.0, 0.15.x; stock WLED's esp32 builds), using
    `discover.py` and the matrix.
-2. Egress allowlist for the builder container (a proxy on an internal network); pip
-   `--require-hashes`; an apt snapshot; an `--offline` rerun with no network.
+2. Hardening still open: pip `--require-hashes`; an apt snapshot; an `--offline` rerun with no
+   network; `--read-only`. (The egress allowlist is done: wled-studio's compose runs the builder on
+   an internal network behind a squid allowlist, tested end to end by its `firmware-e2e` workflow.)
 3. Exact colours in the preview: build WLED's own colour and palette helpers from the user's
    checkout instead of the stand-ins.
 4. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
