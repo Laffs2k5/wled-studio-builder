@@ -36,7 +36,8 @@ jobs:
           items = []
           for f in sorted(pathlib.Path("pins").glob("*.json")):
               for t in json.loads(f.read_text())["targets"]:
-                  items.append({"pins": str(f), "target": t})
+                  # id: unique across pins files (releases share env names), for artifact names
+                  items.append({"pins": str(f), "target": t, "id": f"{f.stem}-{t}"})
           print("targets=" + json.dumps(items))
           PY
 
@@ -91,6 +92,6 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: report-${{ matrix.item.target }}-${{ runner.os }}
+          name: report-${{ matrix.item.id }}-${{ runner.os }}
           path: out/result/build-report.json
           if-no-files-found: ignore
