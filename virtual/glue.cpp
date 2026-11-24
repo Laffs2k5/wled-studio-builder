@@ -8,14 +8,19 @@
 // --- the globals the engine reads, defined (globals.h declares them) -----------------------
 #undef WLED_GLOBAL
 #undef _INIT
+#undef _INIT_N
 #define WLED_GLOBAL
 #define _INIT(x) = x
+#define VIRTUAL_UNPACK(...) __VA_ARGS__
+#define _INIT_N(x) VIRTUAL_UNPACK x
 #include "globals.h"
 WS2812FX strip;
-FakeFS WLED_FS;
+MemFS LittleFS;
+VirtualDNSServer dnsServer;
+VirtualWiFi WiFi;
+VirtualSerial Serial;
 std::vector<CRGBPalette16> customPalettes;
 std::vector<UsermodPalette> usermodPalettes;
-bool gammaCorrectCol = true;
 
 // --- time and randomness: the API sets the clock; a fixed seed keeps runs repeatable --------
 namespace virtualwled {
@@ -36,15 +41,16 @@ uint32_t wled_preview_rng() { virtualwled::rng = virtualwled::rng * 1664525u + 1
 // --- the bus: keeps the pixels where a device would send them to the LEDs ------------------
 class VirtualBus : public Bus {
  public:
-  explicit VirtualBus(uint16_t len, bool rgbw) : Bus(rgbw ? TYPE_SK6812_RGBW : TYPE_WS2812_RGB, 0, RGBW_MODE_MANUAL_ONLY, len) {
-    virtualwled::frame.assign(len, 0);
+  // one frame for all buses, in LED order: each bus keeps its LEDs at its start
+  VirtualBus(uint16_t start, uint16_t len, bool rgbw) : Bus(rgbw ? TYPE_SK6812_RGBW : TYPE_WS2812_RGB, start, RGBW_MODE_MANUAL_ONLY, len) {
+    if (virtualwled::frame.size() < size_t(start) + len) virtualwled::frame.resize(size_t(start) + len, 0);
     _valid = true;          // a bus counts only when valid (finalizeInit checks isOk())
     _hasRgb = true;         // its capabilities, as WLED's own drivers set them: without RGB a
     _hasWhite = rgbw;       // segment is on/off only, and refuses black as its first colour
     _hasCCT = false;
   }
-  void setPixelColor(unsigned pix, uint32_t c) override { if (pix < virtualwled::frame.size()) virtualwled::frame[pix] = c; }
-  uint32_t getPixelColor(unsigned pix) const override { return pix < virtualwled::frame.size() ? virtualwled::frame[pix] : 0; }
+  void setPixelColor(unsigned pix, uint32_t c) override { if (pix < getLength()) virtualwled::frame[getStart() + pix] = c; }
+  uint32_t getPixelColor(unsigned pix) const override { return pix < getLength() ? virtualwled::frame[getStart() + pix] : 0; }
   void show() override {}
 };
 
@@ -58,13 +64,17 @@ uint16_t _gMilliAmpsUsed = 0, _gMilliAmpsMax = 0;
 bool _useABL = false;
 void initializeABL() {}
 uint8_t getI(uint8_t, const uint8_t*, uint8_t) { return 0; }
-void removeAll() { busses.clear(); }
+void removeAll() { busses.clear(); virtualwled::frame.clear(); }
 int add(const BusConfig& bc, bool) {
-  busses.push_back(std::make_unique<VirtualBus>(bc.count, Bus::hasWhite(bc.type)));
+  busses.push_back(std::make_unique<VirtualBus>(bc.start, bc.count, Bus::hasWhite(bc.type)));
   return int(busses.size()) - 1;
 }
-void setPixelColor(unsigned pix, uint32_t c) { if (!busses.empty()) busses[0]->setPixelColor(pix, c); }
+void setPixelColor(unsigned pix, uint32_t c) {
+  for (auto& b : busses)
+    if (pix >= b->getStart() && pix < b->getStart() + b->getLength()) { b->setPixelColor(pix - b->getStart(), c); return; }
+}
 void show() {}
+bool canAllShow() { return true; }
 void setSegmentCCT(int16_t, bool) {}
 }  // namespace BusManager
 
@@ -95,7 +105,34 @@ uint8_t FontManager::getGlyphWidth(uint32_t) { return 0; }
 void FontManager::drawCharacter(uint32_t, int16_t, int16_t, uint32_t, uint32_t, int8_t) {}
 void* allocate_buffer(size_t size, uint32_t) { return calloc(size, 1); }
 void* d_malloc(size_t size) { return malloc(size); }
+void* p_malloc(size_t size) { return malloc(size); }
+
+// WLED's JSON buffer lock, single-threaded: the same contract (no buffer or held: refuse; else
+// take it and clear the document) without the ESP32's mutex
+bool requestJSONBufferLock(uint8_t moduleID) {
+  if (pDoc == nullptr || jsonBufferLock) return false;
+  jsonBufferLock = moduleID ? moduleID : 255;
+  pDoc->clear();
+  return true;
+}
+void releaseJSONBufferLock() { jsonBufferLock = 0; }
 void enumerateLedmaps() {}
+
+// --- the network: a virtual device has none. WLED's sync (UDP notifier), realtime input, the
+// HTTP API in JSON ("win"), NTP. Its websocket push is the device server's: it counts pushes.
+namespace virtualwled { uint32_t ws_pushes = 0; }
+void sendDataWs(AsyncWebSocketClient*) { virtualwled::ws_pushes++; }
+void notify(byte, bool) {}
+void sendSysInfoUDP() {}
+void realtimeLock(uint32_t, byte) {}
+void exitRealtime() {}
+void setTimeFromAPI(uint32_t) {}
+bool handleSet(AsyncWebServerRequest*, const String&, bool) { return false; }
+
+// UsermodManager (WLED's um_manager.cpp): the state hooks, over the registered usermods
+void UsermodManager::addToJsonState(JsonObject& obj) { for (Usermod* m : virtualwled::usermods()) m->addToJsonState(obj); }
+void UsermodManager::readFromJsonState(JsonObject& obj) { for (Usermod* m : virtualwled::usermods()) m->readFromJsonState(obj); }
+void UsermodManager::onStateChange(uint8_t mode) { for (Usermod* m : virtualwled::usermods()) m->onStateChange(mode); }
 
 // Usermod's one out-of-line method (WLED's um_manager.cpp; it carries the class's vtable). It
 // writes settings-page script; a virtual device has no settings page.

@@ -20,6 +20,18 @@
 #ifndef ESP32
 #define ESP32
 #endif
+// a virtual device has no network, remote, file editor or OTA: WLED's own switches turn their code
+// off (none of them touches the effect engine, so the effect list is unchanged)
+#define WLED_DISABLE_MQTT
+#define WLED_DISABLE_ALEXA
+#define WLED_DISABLE_HUESYNC
+#define WLED_DISABLE_OTA
+#define WLED_DISABLE_ADALIGHT
+#define WLED_DISABLE_LOXONE
+#define WLED_DISABLE_WEBSOCKETS
+#define WLED_DISABLE_INFRARED
+#define WLED_DISABLE_ESPNOW
+#define WLED_DISABLE_FILESYSTEM_EDITOR
 #define PROGMEM
 #define IRAM_ATTR
 #define WLED_GLOBAL extern
@@ -50,6 +62,7 @@ uint32_t micros();
 #define __time_t_defined   // the libc has time_t
 #endif
 #include "src/dependencies/time/TimeLib.h"
+#include "src/dependencies/toki/Toki.h"
 #include "const.h"
 #include "colors.h"
 #include "fcn_declare.h"
