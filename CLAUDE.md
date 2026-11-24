@@ -82,6 +82,14 @@ the sibling repo `wled-studio`.
   starts a second ahead and `strip.timebase` takes it off again. The board's `-D` flags make the
   effect list (`WLED_PS_DONT_REPLACE_FX`, `WLED_ENABLE_GIF`): compare with the image's
   `effects.json`. Frames come from WLED's pixel buffer (`strip.getPixelColor`), not the bus.
+- **The virtual device (`virtual/device.cpp`, `server/`) gotchas:** `globals.h` is included twice
+  (declared by our `wled.h`, defined by `glue.cpp`), so it must not keep WLED's `WLED_H` include
+  guard, and only its `Button` struct is guarded. Array globals need `_INIT_N` as WLED defines it
+  (`UNPACK`). WLED pushes to websocket clients at most once a second
+  (`INTERFACE_UPDATE_COOLDOWN`), and a running playlist keeps changing the state: tests wait for
+  pushes and end playlists (picking an effect by hand does, as in WLED). Don't stop the local
+  server with `pkill -f` on its command line: the pattern matches your own shell and kills it.
+  Use the task's stop instead.
 - **Stand-in templates must return by value:** `auto min(T a, U b) -> decltype(a < b ? a : b)` is
   a reference to a parameter (dangling). It made Fireworks 1D overflow and 48 effects dark in the
   virtual WLED, and lurked in the preview shim too. Use `std::common_type<T, U>::type`.
