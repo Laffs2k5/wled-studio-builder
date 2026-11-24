@@ -6,7 +6,9 @@
 #   VIRTUAL_FLAGS   the firmware's own -D flags for the engine (from its compile command);
 #                   default: -DUSERMOD_AUDIOREACTIVE
 #   SANITIZE=1      build with AddressSanitizer (memory errors stop the run with a report)
-# Needs Emscripten (em++) and python3. Writes OUT_DIR/virtual.mjs and virtual.wasm.
+#   TWIN_NAME       what the twin is of, for the device server (e.g. quinled-dig-next-2 16.0.1)
+# Needs Emscripten (em++) and python3. Writes OUT_DIR/virtual.mjs and virtual.wasm, and
+# twin.json (the WLED version and commit, the flags and usermods: what the device server reports).
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 out=$(mkdir -p "$1" && cd "$1" && pwd); shift
@@ -23,7 +25,8 @@ link=()
 if [ "${DEBUG:-}" = 1 ]; then flags+=(-g); link+=(-g); fi
 if [ "${SANITIZE:-}" = 1 ]; then flags+=(-fsanitize=address -fsanitize-recover=address -g); link+=(-fsanitize=address -fsanitize-recover=address -g -sINITIAL_MEMORY=268435456); fi
 srcs=("$gen"/FX.cpp "$gen"/FX_fcn.cpp "$gen"/FX_2Dfcn.cpp "$gen"/FXparticleSystem.cpp "$gen"/colors.cpp "$gen"/palettes.cpp
-      "$gen"/wled_math.cpp "$gen"/util_extract.cpp "$gen"/json_extract.cpp "$gen"/presets.cpp "$gen"/playlist.cpp "$gen"/led.cpp "$gen"/file_extract.cpp "$gen"/src/dependencies/fastled_slim/fastled_slim.cpp
+      "$gen"/wled_math.cpp "$gen"/util_extract.cpp "$gen"/json_extract.cpp "$gen"/presets.cpp "$gen"/playlist.cpp
+      "$gen"/led.cpp "$gen"/file_extract.cpp "$gen"/src/dependencies/fastled_slim/fastled_slim.cpp
       "$gen"/src/dependencies/time/Time.cpp "$gen"/src/dependencies/time/DateStrings.cpp "$gen/glue.cpp" "$gen/api.cpp" "$gen/device.cpp")
 for d in "$@"; do srcs+=("$d"/*.cpp); done
 objs=()
@@ -36,9 +39,21 @@ done
 em++ "${objs[@]}" -O2 "${link[@]}" \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=1048576 \
   -sERROR_ON_UNDEFINED_SYMBOLS=1 -Wl,--error-limit=0 \
-  -sEXPORTED_FUNCTIONS=_virtual_boot,_virtual_output,_preview_setup,_preview_effect_count,_preview_effect_name,_preview_effect_metadata,_preview_select,_preview_set,_preview_length,_preview_frame,_preview_audio,_preview_palette_names,_virtual_device_boot,_virtual_loop,_virtual_json,_virtual_post_state,_virtual_ws_pushes,_virtual_live,_virtual_file_write,_virtual_file_read,_virtual_file_list,_virtual_file_writes,_virtual_custom_palettes,_virtual_version_id,_virtual_brightness,_malloc,_free \
+  -sEXPORTED_FUNCTIONS=_virtual_boot,_virtual_output,_preview_setup,_preview_effect_count,_preview_effect_name,_preview_effect_metadata,_preview_select,_preview_set,_preview_length,_preview_frame,_preview_audio,_preview_palette_names,_virtual_device_boot,_virtual_loop,_virtual_json,_virtual_post_state,_virtual_ws_pushes,_virtual_live,_virtual_file_write,_virtual_file_read,_virtual_file_list,_virtual_file_writes,_virtual_info,_virtual_palette_names,_virtual_set_pin,_virtual_unlocked,_virtual_lock,_malloc,_free \
   -sEXPORTED_RUNTIME_METHODS=UTF8ToString,stringToNewUTF8,HEAPU8,HEAPU32,HEAP32 \
   -o "$out/virtual.mjs"
 rm -rf "$out/obj"
 cp "$out/virtual.mjs" "$out/preview.mjs"   # the effect preview's API too: its tests and the Effect studio can load it
+python3 - "$out/twin.json" "$wled" "${TWIN_NAME:-}" "${extra[*]}" "$@" <<'PY'
+import json, pathlib, subprocess, sys
+out, wled, name, flags, *usermods = sys.argv[1:]
+root = pathlib.Path(wled)
+try:
+    ver = json.loads((root / "package.json").read_text())["version"]
+except (OSError, ValueError, KeyError):
+    ver = ""
+commit = subprocess.run(["git", "-C", wled, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+json.dump({"firmware": name, "ver": ver, "wled": commit, "flags": flags.split(),
+           "usermods": [pathlib.Path(u).name for u in usermods]}, open(out, "w"), indent=1)
+PY
 echo "built $out/virtual.mjs and virtual.wasm (WLED from $wled${*:+, usermods: $*})"

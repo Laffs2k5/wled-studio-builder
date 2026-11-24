@@ -65,6 +65,8 @@ jobs:
           virtual/build.sh "$RUNNER_TEMP/virtual" "$RUNNER_TEMP/wled" examples/usermods/studio_example_fx
           VIRTUAL_DIR="$RUNNER_TEMP/virtual" node --test virtual/test/smoke.test.mjs
           PREVIEW_DIR="$RUNNER_TEMP/virtual" node --test preview/test/preview.test.mjs
+          # the device server: WLED's API over the twin
+          VIRTUAL_DIR="$RUNNER_TEMP/virtual" node --test virtual/test/server.test.mjs
           # the gate must be seen to fail: an effect that crashes fails the smoke test
           virtual/build.sh "$RUNNER_TEMP/virtual-crash" "$RUNNER_TEMP/wled" virtual/test/crash_probe
           if VIRTUAL_DIR="$RUNNER_TEMP/virtual-crash" node --test virtual/test/smoke.test.mjs > "$RUNNER_TEMP/crash.log" 2>&1; then

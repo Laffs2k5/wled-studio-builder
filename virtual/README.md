@@ -1,8 +1,10 @@
 # Virtual WLED
 
-WLED's own effect engine, compiled to WebAssembly from a WLED checkout: every built-in effect,
-segments, layers, blend modes, palettes, with your usermods, running in Node or a browser with no
-device. Ours here is only the glue; every WLED file is taken from the checkout at build time.
+WLED's own effect engine and state code, compiled to WebAssembly from a WLED checkout: every
+built-in effect, segments, layers, blend modes, palettes, presets, playlists and transitions, with
+your usermods, running in Node or a browser with no device. Ours here is only the glue; every WLED
+file is taken from the checkout at build time. Behind `server/` it is a **virtual device** that
+anything speaking WLED's API can use (below).
 
 ```bash
 source ~/emsdk/emsdk_env.sh
@@ -15,18 +17,25 @@ PREVIEW_DIR=/tmp/virtual node --test <a usermod's frame tests>     # the same AP
 ## How it's made
 
 - `virtual_wled.py` copies the engine (`FX.cpp`, `FX_fcn.cpp`, `FX_2Dfcn.cpp`,
-  `FXparticleSystem.cpp`, `colors.cpp`, `palettes.cpp`, `wled_math.cpp`), its headers and bundled
-  libraries (fastled_slim, ArduinoJson, TimeLib) from the checkout, and generates `globals.h` (the
-  `WLED_GLOBAL`s the engine reads, from WLED's `wled.h`) and `util_extract.cpp` (helpers from
-  `util.cpp` and `led.cpp` by name; the noise functions as one block).
+  `FXparticleSystem.cpp`, `colors.cpp`, `palettes.cpp`, `wled_math.cpp`), the state code
+  (`presets.cpp`, `playlist.cpp`, `led.cpp`), their headers and bundled libraries (fastled_slim,
+  ArduinoJson, TimeLib, Toki) from the checkout, and generates `globals.h` (every plain-data
+  `WLED_GLOBAL` of WLED's `wled.h`, in its own `#if` structure), `json_extract.cpp` (`json.cpp`'s
+  state functions by name), `file_extract.cpp` (`file.cpp` up to its web serving) and
+  `util_extract.cpp` (helpers from `util.cpp` by name; the noise functions as one block).
 - `wled.h` (ours) stands in for WLED's, which pulls in the whole device; `stub/` has the Arduino
   basics. Usermods register into a list (`REGISTER_USERMOD`): WLED's linker sections don't exist
   in WebAssembly.
-- `glue.cpp` is the rest of the link: a **virtual bus** that keeps the pixels, the sound source,
-  and stand-ins (no fonts, no files, plain memory).
+- `glue.cpp` is the rest of the link: a **virtual bus** per output that keeps the pixels, the
+  sound source, WLED's JSON buffer lock without the ESP32 mutex, and stand-ins (no fonts, plain
+  memory; no UDP sync, realtime input, NTP or HTTP-in-JSON). Files live in an in-memory file
+  system (`stub/Arduino.h`, `MemFS`).
 - `api.cpp` is the effect preview's C API (`preview_*`), so the same tests run on the stand-in
   preview and on the real engine, plus `virtual_boot` and `virtual_output` (after brightness and
   gamma, as on the strip). Frames read WLED's own pixel buffer, as its live view does.
+- `device.cpp` is the device's C API (`virtual_device_boot`, `virtual_loop`, `virtual_json`,
+  `virtual_post_state`, `virtual_live`, the files, the PIN): it calls WLED's functions the way
+  WLED's setup, loop and web server do.
 
 ## The board's flags make the effect list
 
@@ -46,6 +55,8 @@ every metadata string. The gate will take the flags from the build's compile com
   165 effects run, none crash; 4 stay dark for good reasons (Image without a file, Copy Segment
   without a source, Sunrise starts dark, Lightning is random).
 - The effect preview's tests and a usermod's own frame tests run unchanged (`PREVIEW_DIR`).
+- `test/server.test.mjs`: the device server as a client sees it (info, state, the PIN, presets
+  and a playlist, the websocket, files across a restart).
 
 ## In the gate
 
@@ -64,6 +75,33 @@ copies 72 bytes from a gradient palette shorter than that (a read past `Aurora_g
 harmless on a device, where it reads flash). Comparing against the firmware without our usermods
 needs every report; recovery after a report (`-fsanitize-recover`, `halt_on_error=0`) still
 stops at the second one under Emscripten. Until that works, crashes and the effect list gate.
+
+## As a device
+
+`server/server.mjs` puts a twin behind WLED's HTTP JSON API and websocket, with Node's standard
+library only:
+
+```bash
+VIRTUAL_DIR=/tmp/virtual LEDS=124,126 PIN_FILE=<file> DATA_DIR=/tmp/vdata node virtual/server/server.mjs
+VIRTUAL_DIR=/tmp/virtual node --test virtual/test/server.test.mjs
+```
+
+WLED's code answers: `/json/state` in and out (`deserializeState`, `serializeState`, including
+`ps`, `psave`, playlists, `~` increments, transitions), `/json/eff`, `/json/fxdata`, `/json/pal`,
+`/presets.json` and any other file (not the secrets), the settings PIN (`checkSettingsPIN`, the
+3 s retry cooldown, the 15-minute relock) for `/upload` and `/update`, `/settings/lock`, and `/ws`
+(the state and info greeting, pushes at most once a second, commands, the binary live view at
+25 frames/s for the last client to ask). `/json/info` is WLED's LED, effect, palette and file
+numbers plus the server's own: `arch` is `"virtual"` (so wled-studio won't plan a flash) and
+`virtual` names the firmware, the WLED commit, the flags and the outputs. Files written by WLED
+or uploaded are saved to `DATA_DIR` once a second, and read back at the next start.
+
+`LEDS` gives one bus per output (`124,126`); WLED makes one segment over all of them, as on a
+fresh device. What a twin doesn't have: WLED's config code (`POST /json/cfg` answers 501;
+`/cfg.json` is an uploaded one or a short description of the twin), firmware updates (`/update`
+refuses: a twin runs the firmware it was built from), its web UI and settings pages (`/` is a
+small live-view page), the network (sync, realtime input such as DDP, MQTT, Alexa), 2D matrices
+and a real sound input (sound-reactive effects get the simulated sound).
 
 ## What a twin also needs
 

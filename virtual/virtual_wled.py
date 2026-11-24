@@ -43,7 +43,7 @@ LIBRARIES = ["src/dependencies/fastled_slim", "src/dependencies/json", "src/depe
 WEB_ONLY = ["src/dependencies/json/AsyncJson-v6.h"]       # replaced by an empty file
 UTIL_FUNCTIONS = ["beat88", "beat16", "beat8", "beatsin88_t", "beatsin16_t", "beatsin8_t", "get_random_wheel_index",
                   "hw_random", "simulateSound", "mapf", "hashInt", "utf8_decode", "utf8_strlen", "extractModeDefaults",
-                  "parseNumber", "getVal", "getBoolVal"]
+                  "parseNumber", "getVal", "getBoolVal", "checkSettingsPIN"]
 UTIL_BLOCKS = [("#define PERLIN_SHIFT", "String computeSHA1")]   # (first line, first line after)
 UTIL_DEFINES = ["UTF8_LEN"]
 UTIL_ENUMS = ["UM_SoundSimulations"]

@@ -27,6 +27,8 @@ static std::vector<uint8_t> live;  // the last live-view frame
  *  e.g. "124,126". */
 EXPORT int virtual_device_boot(const char* lengths, int rgbw, int boot_preset) {
   if (pDoc == nullptr) pDoc = new DynamicJsonDocument(2 * JSON_BUFFER_SIZE);   // wled.cpp, with PSRAM
+  updateFSInfo();                                                              // WLED::setup
+  initPresetsFile();
   NeoGammaWLEDMethod::calcGammaTable(gammaCorrectVal);
   BusManager::removeAll();
   uint8_t pins[1] = {2};
@@ -74,6 +76,7 @@ EXPORT int virtual_device_boot(const char* lengths, int rgbw, int boot_preset) {
  *  presets, and a frame when one is due. */
 EXPORT void virtual_loop(uint32_t ms) {
   now_ms = ms;
+  if (strlen(settingsPIN) > 0 && correctPIN && millis() - lastEditTime > PIN_TIMEOUT) correctPIN = false;
   handleTransitions();
   for (Usermod* m : usermods()) m->loop();
   handleNightlight();
@@ -109,8 +112,8 @@ EXPORT const char* virtual_json(int what) {
 }
 
 /** WLED's POST /json/state: 1 applied and WLED answers with the state ("v"), 0 applied, -1 not
- *  a JSON object (WLED: 400, error 9), -2 the JSON buffer is busy (error 3). The settings PIN
- *  is the server's: it removes "pin" before calling this. */
+ *  a JSON object (WLED: 400, error 9), -2 the JSON buffer is busy (error 3). A "pin" in it
+ *  unlocks the settings, as on WLED. */
 EXPORT int virtual_post_state(const char* body) {
   if (!requestJSONBufferLock(JSON_LOCK_SERVER)) return -2;
   DeserializationError error = deserializeJson(*pDoc, body);
@@ -119,6 +122,7 @@ EXPORT int virtual_post_state(const char* body) {
     releaseJSONBufferLock();
     return -1;
   }
+  if (root.containsKey("pin")) checkSettingsPIN(root["pin"].as<const char*>());
   bool verbose = deserializeState(root);
   releaseJSONBufferLock();
   if (verbose) interfaceUpdateCallMode = CALL_MODE_WS_SEND;   // as wled_server.cpp: a push follows
@@ -184,7 +188,55 @@ EXPORT const char* virtual_file_list() {
 }
 EXPORT uint32_t virtual_file_writes() { return LittleFS.writes; }
 
+// --- the settings PIN: WLED's own check (util.cpp), its 15-minute relock (WLED::loop) -------
+/** Sets the device's PIN (its wsec.json, on a device); "" for none. Locks. */
+EXPORT void virtual_set_pin(const char* pin) {
+  snprintf(settingsPIN, sizeof(settingsPIN), "%s", pin);
+  correctPIN = !strlen(settingsPIN);
+}
+/** 1 while unlocked: /upload, /update and the settings pages need it. */
+EXPORT int virtual_unlocked() { return correctPIN ? 1 : 0; }
+/** GET /settings/lock (wled_server.cpp). */
+EXPORT void virtual_lock() { correctPIN = !strlen(settingsPIN); }
+
 // --- what /json/info needs that only the firmware knows --------------------------------------
-EXPORT int virtual_custom_palettes() { return int(customPalettes.size()); }
-EXPORT int virtual_version_id() { return VERSION; }
-EXPORT int virtual_brightness() { return bri; }
+/** The firmware's part of /json/info (json.cpp, serializeInfo): its version id, the LEDs, the
+ *  effect and palette counts, the file system. The server adds the rest (name, network, uptime). */
+EXPORT const char* virtual_info() {
+  if (!requestJSONBufferLock(JSON_LOCK_SERVEJSON)) return nullptr;
+  out.clear();
+  JsonObject root = pDoc->to<JsonObject>();
+  root["vid"] = VERSION;
+  JsonObject leds = root.createNestedObject("leds");
+  leds["count"] = strip.getLengthTotal();
+  leds["pwr"] = 0;
+  leds["fps"] = strip.getFps();
+  leds["maxpwr"] = 0;
+  leds["maxseg"] = WS2812FX::getMaxSegments();
+  leds["bootps"] = bootPreset;
+  unsigned all = 0;
+  JsonArray lcs = leds.createNestedArray("seglc");
+  for (size_t s = 0; s < strip.getSegmentsNum(); s++) {
+    if (!strip.getSegment(s).isActive()) continue;
+    unsigned lc = strip.getSegment(s).getLightCapabilities();
+    all |= lc;
+    lcs.add(lc);
+  }
+  leds["lc"] = all;
+  leds["rgbw"] = strip.hasRGBWBus();
+  leds["wv"] = all & 0x02;
+  leds["cct"] = all & 0x04;
+  root["live"] = false;
+  root["fxcount"] = strip.getModeCount();
+  root["palcount"] = getPaletteCount();
+  root["cpalcount"] = customPalettes.size();
+  root["cpalmax"] = WLED_MAX_CUSTOM_PALETTES;
+  JsonObject fs = root.createNestedObject("fs");
+  fs["u"] = fsBytesUsed / 1000;
+  fs["t"] = fsBytesTotal / 1000;
+  fs["pmt"] = presetsModifiedTime;
+  serializeJson(*pDoc, out);
+  releaseJSONBufferLock();
+  return out.c_str();
+}
+EXPORT const char* virtual_palette_names() { return JSON_palette_names; }
