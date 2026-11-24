@@ -11,6 +11,8 @@
      byte-identical in the custom build; the only new objects must come from
      your usermods.
   4. The custom image must fit the app slot (app_slot_bytes in the pins file)
+  5. With --emsdk: the image's virtual twin (virtual/) runs every effect, its effect list is the
+     image's, and no effect crashes that doesn't crash without the usermods (virtual_check.py)
      with a margin.
 
 Writes gate-report.json and exits 0 only if all four pass. The image to flash
@@ -71,6 +73,8 @@ def main(argv: list[str] | None = None, builder=run_build) -> int:
     ap.add_argument("--usermod", type=Path, action="append", required=True)
     ap.add_argument("--work", type=Path, default=Path("work/gate"))
     ap.add_argument("--out", type=Path, default=Path("out/gate"))
+    ap.add_argument("--emsdk", type=Path, default=None,
+                    help="an Emscripten SDK: then a passed gate also runs the virtual check (virtual_twin)")
     a = ap.parse_args(argv)
 
     out = a.out.resolve()
@@ -102,9 +106,27 @@ def main(argv: list[str] | None = None, builder=run_build) -> int:
                               [u.name for u in a.usermod])
     report["objects"] = objects
     report.update(evaluate(stock, custom, objects, slot))
+    if report["passed"] and a.emsdk is not None:
+        report["checks"]["virtual_twin"] = virtual_check(a, out) == 0
+        vr = out / "virtual" / "virtual-report.json"
+        if vr.exists():
+            v = json.loads(vr.read_text())
+            report["virtual"] = {k: v.get(k) for k in ("passed", "effects_run", "crashed", "crashed_in_stock_too", "dark", "error")}
+        report["passed"] = all(report["checks"].values())
     if report["passed"]:
         report["firmware"] = "custom/firmware.bin"
     return finish(out, report)
+
+
+def virtual_check(a, out: Path) -> int:
+    """The image's twin in WebAssembly runs every effect (studio/virtual_check.py)."""
+    cmd = [sys.executable, str(HERE / "virtual_check.py"), "--wled", str(a.work.resolve() / "wled"),
+           "--flags", str(out / "custom" / "fx_flags.json"), "--effects", str(out / "custom" / "effects.json"),
+           "--out", str(out / "virtual"), "--emsdk", str(a.emsdk)]
+    for u in a.usermod:
+        cmd += ["--usermod", str(u)]
+    print("+ " + " ".join(cmd), flush=True)
+    return subprocess.run(cmd).returncode
 
 
 def finish(out: Path, report: dict) -> int:

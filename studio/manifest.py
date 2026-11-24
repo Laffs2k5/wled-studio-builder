@@ -177,6 +177,30 @@ def preprocess(entry: dict) -> str:
     return r.stdout
 
 
+def defines(entry: dict) -> list[str]:
+    """The -D flags of one compile command, as "-DNAME" or "-DNAME=VALUE" (both of the forms
+    compilers take, "-DX" and "-D X", normalised)."""
+    args = entry.get("arguments") or shlex.split(entry["command"], posix=os.name != "nt")
+    out, i = [], 0
+    while i < len(args):
+        a = args[i]
+        if a == "-D" and i + 1 < len(args):
+            out.append("-D" + args[i + 1])
+            i += 2
+            continue
+        if a.startswith("-D") and len(a) > 2:
+            out.append(a)
+        i += 1
+    return out
+
+
+def fx_defines(wled: Path) -> list[str]:
+    """FX.cpp's -D flags from the compile database from_build() wrote: what shapes the effect
+    engine (the board, PSRAM, sound, the particle-system choices), for the virtual WLED."""
+    db = json.loads((wled / "compile_commands.json").read_text(encoding="utf-8"))
+    return defines(compile_entry(db, "wled00/FX.cpp"))
+
+
 def from_build(wled: Path, env: str, usermods: list[Path], proc_env: dict | None = None) -> dict:
     """The manifest of the image just built in `wled` for `env` (PlatformIO's compile database
     is written for it; nothing is rebuilt)."""

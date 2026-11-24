@@ -47,6 +47,16 @@ every metadata string. The gate will take the flags from the build's compile com
   without a source, Sunrise starts dark, Lightning is random).
 - The effect preview's tests and a usermod's own frame tests run unchanged (`PREVIEW_DIR`).
 
+## In the gate
+
+`studio/gate.py --emsdk <sdk>` (the job service always passes it) adds a fifth check,
+`virtual_twin`, run by `studio/virtual_check.py` after the other four pass: the image's own build
+writes `fx_flags.json` (FX.cpp's `-D` flags from the compile database; the check keeps `WLED_*`,
+`USERMOD_*` and `BOARD_HAS_PSRAM`), the twin is built stock and with the usermods, the custom
+twin's effect list must be the image's `effects.json`, and no effect may crash that doesn't crash
+in the stock twin. A failed check fails the gate, so the image can't be flashed. CI proves it can
+fail: `test/crash_probe` (an effect dividing by zero) must fail the smoke test, by name.
+
 ## Memory checking (not a gate yet)
 
 `SANITIZE=1` builds with AddressSanitizer. First finding, in WLED itself: `Segment::loadPalette`

@@ -405,6 +405,8 @@ def main() -> int:
         m = fxmanifest.from_build(wled, pins["env"], [p.resolve() for p in args.usermod], env)
         (out / "effects.json").write_text(json.dumps(m, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         manifest_status = f"ok, {len(m['effects'])} effects"
+        # the engine's flags, for building its virtual twin (virtual/, studio/virtual_check.py)
+        (out / "fx_flags.json").write_text(json.dumps(fxmanifest.fx_defines(wled), indent=1) + "\n", encoding="utf-8")
     except Exception as e:  # noqa: BLE001 - recorded in the report
         manifest_status = f"failed: {e.__class__.__name__}: {e}"[:500]
         print(f"warning: no effect manifest ({manifest_status})", flush=True)

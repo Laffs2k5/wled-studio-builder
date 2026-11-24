@@ -148,17 +148,22 @@ def validate_preview(cfg: Config, body: object) -> dict:
     return job
 
 
+def emsdk_script(cfg: Config) -> str:
+    """Bash that installs Emscripten into the work volume once, and activates it."""
+    emsdk = cfg.work / "emsdk"
+    return (
+        "set -e\n"
+        f"if [ ! -x '{emsdk}/emsdk' ]; then git clone -q --depth 1 https://github.com/emscripten-core/emsdk.git '{emsdk}'; fi\n"
+        f"'{emsdk}/emsdk' install {EMSDK_VERSION} >/dev/null\n"
+        f"'{emsdk}/emsdk' activate {EMSDK_VERSION} >/dev/null\n"
+        f". '{emsdk}/emsdk_env.sh' >/dev/null 2>&1\n"
+    )
+
+
 def run_job(cfg: Config, job: dict, job_dir: Path) -> int:  # pragma: no cover - runs real builds
     with open(job_dir / "build.log", "wb") as log:
         if job.get("kind") == "preview":
-            emsdk = cfg.work / "emsdk"
-            script = (
-                "set -e\n"
-                f"if [ ! -x '{emsdk}/emsdk' ]; then git clone -q --depth 1 https://github.com/emscripten-core/emsdk.git '{emsdk}'; fi\n"
-                f"'{emsdk}/emsdk' install {EMSDK_VERSION} >/dev/null\n"
-                f"'{emsdk}/emsdk' activate {EMSDK_VERSION} >/dev/null\n"
-                f". '{emsdk}/emsdk_env.sh' >/dev/null 2>&1\n"
-            )
+            script = emsdk_script(cfg)
             if job.get("wled_commit"):  # exact colours: WLED's own colour code from its checkout
                 src = cfg.work / "preview-wled" / job["wled_commit"]
                 script += (
@@ -171,8 +176,13 @@ def run_job(cfg: Config, job: dict, job_dir: Path) -> int:  # pragma: no cover -
                 + " ".join(f"'{p}'" for p in job["usermod_paths"]) + "\n"
             )
             return subprocess.run(["bash", "-c", script], stdout=log, stderr=subprocess.STDOUT).returncode
+        # the gate includes the virtual check (the image's twin runs every effect), so Emscripten
+        # must be there: if it can't be installed, the job fails rather than skipping the check
+        if subprocess.run(["bash", "-c", emsdk_script(cfg)], stdout=log, stderr=subprocess.STDOUT).returncode != 0:
+            log.write(b"\nGATE FAILED: Emscripten for the virtual check could not be installed\n")
+            return 1
         cmd = [sys.executable, str(HERE / "gate.py"), str(cfg.pins_dir / job["pins"]), "--target", job["target"],
-               "--work", str(cfg.work), "--out", str(job_dir)]
+               "--work", str(cfg.work), "--out", str(job_dir), "--emsdk", str(cfg.work / "emsdk")]
         for p in job["usermod_paths"]:
             cmd += ["--usermod", p]
         return subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT).returncode

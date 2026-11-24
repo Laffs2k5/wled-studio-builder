@@ -298,13 +298,27 @@ class UsermodCaseTests(unittest.TestCase):
         self.assertEqual(build.fix_usermod_case("x\n", "a", self.dir / "nope"), ("x\n", []))
 
 
+class VirtualFlagsTests(unittest.TestCase):
+    """The engine's flags: from a compile command, then only what shapes the effect engine."""
+
+    def test_defines_and_the_engine_filter(self):
+        import manifest
+        import virtual_check
+        d = manifest.defines({"command": 'g++ -DARDUINO=10812 -D WLED_PS_DONT_REPLACE_FX -DNAMES="a b" '
+                                         '-DWLED_RELEASE_NAME=\\"Dig\\" -DBOARD_HAS_PSRAM -DUSERMOD_X -c FX.cpp'})
+        self.assertEqual(d, ["-DARDUINO=10812", "-DWLED_PS_DONT_REPLACE_FX", "-DNAMES=a b",
+                             '-DWLED_RELEASE_NAME="Dig"', "-DBOARD_HAS_PSRAM", "-DUSERMOD_X"])
+        self.assertEqual(virtual_check.engine_flags(d), ["-DWLED_PS_DONT_REPLACE_FX", '-DWLED_RELEASE_NAME="Dig"',
+                                                         "-DBOARD_HAS_PSRAM", "-DUSERMOD_X"])
+
+
 class GateTests(unittest.TestCase):
     """The gate's logic, with a fake builder (no compiling)."""
 
     STOCK = {"core/a.o": "1", "core/b.o": "2", "lib.a:x.o": "3"}
 
     def run_gate(self, stock_check=None, custom_objects=None, custom_size=1_000_000, slot=1_572_864,
-                 fail_stock=False):
+                 fail_stock=False, virtual=None):
         tmp = Path(tempfile.mkdtemp())
         pins = tmp / "pins.json"
         pins.write_text(json.dumps({"name": "p", "app_slot_bytes": slot, "targets": {"t": {}}}))
@@ -323,8 +337,31 @@ class GateTests(unittest.TestCase):
             (out / "objects.json").write_text(json.dumps(objects))
             return 0
 
-        rc = gate.main([str(pins), "--target", "t", "--usermod", str(um), "--out", str(tmp / "out")], builder=builder)
+        argv = [str(pins), "--target", "t", "--usermod", str(um), "--out", str(tmp / "out")]
+        if virtual is None:
+            rc = gate.main(argv, builder=builder)
+        else:   # the virtual check, faked: its exit code and the report it writes
+            def fake_virtual(a, out):
+                (out / "virtual").mkdir(parents=True, exist_ok=True)
+                (out / "virtual" / "virtual-report.json").write_text(json.dumps(
+                    {"passed": virtual == 0, "effects_run": 3, "crashed": [] if virtual == 0 else ["250 Crash: …"]}))
+                return virtual
+            from unittest import mock
+            with mock.patch.object(gate, "virtual_check", fake_virtual):
+                rc = gate.main(argv + ["--emsdk", str(tmp)], builder=builder)
         return rc, json.loads((tmp / "out" / "gate-report.json").read_text())
+
+    def test_the_virtual_twin_is_a_check_with_emsdk(self):
+        rc, rep = self.run_gate(virtual=0)
+        self.assertEqual(rc, 0)
+        self.assertTrue(rep["checks"]["virtual_twin"] and rep["virtual"]["effects_run"] == 3)
+        rc, rep = self.run_gate(virtual=1)
+        self.assertEqual(rc, 1)
+        self.assertFalse(rep["passed"] or rep["checks"]["virtual_twin"])
+        self.assertNotIn("firmware", rep)
+        self.assertEqual(rep["virtual"]["crashed"], ["250 Crash: …"])
+        rc, rep = self.run_gate()                                   # without --emsdk: four checks, as before
+        self.assertNotIn("virtual_twin", rep["checks"])
 
     def test_passes(self):
         rc, rep = self.run_gate()
