@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #define PROGMEM
@@ -145,8 +146,9 @@ uint16_t hw_random16(uint16_t lim);
 template <typename T> T map(T x, T in_min, T in_max, T out_min, T out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-template <typename T, typename U> auto min(T a, U b) -> decltype(a < b ? a : b) { return a < b ? a : b; }
-template <typename T, typename U> auto max(T a, U b) -> decltype(a > b ? a : b) { return a > b ? a : b; }
+// by value: decltype(a < b ? a : b) would be a reference to a parameter, dangling once returned
+template <typename T, typename U> typename std::common_type<T, U>::type min(T a, U b) { return a < b ? a : b; }
+template <typename T, typename U> typename std::common_type<T, U>::type max(T a, U b) { return a > b ? a : b; }
 
 // Sound: the usermod data exchange WLED's sound effects use. FX.cpp's getAudioData() is static
 // there, so a usermod effect asks the usermod manager for AudioReactive's data and falls back to
