@@ -37,7 +37,8 @@ class ServiceTests(unittest.TestCase):
     def start(self, passed=True, token=None, runner=None):
         tmp = Path(tempfile.mkdtemp())
         (tmp / "pins").mkdir()
-        (tmp / "pins" / "p.json").write_text(json.dumps({"name": "p", "targets": {"board": {"verified": {"windows": {}}}}}))
+        (tmp / "pins" / "p.json").write_text(json.dumps({"name": "p", "targets": {"board": {"verified": {"windows": {}}}},
+                                                     "wled": {"repo": "https://example.invalid/wled", "commit": "a" * 40}}))
         (tmp / "fx" / "my_fx").mkdir(parents=True)
         env = {"WLED_STUDIO_PINS_DIR": str(tmp / "pins"), "WLED_STUDIO_USERMODS_DIRS": str(tmp / "fx"),
                "WLED_STUDIO_JOBS_DIR": str(tmp / "jobs"), "WLED_STUDIO_WORK": str(tmp / "work"),
@@ -153,8 +154,18 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.call("GET", f"/jobs/{job['id']}/preview/preview.mjs")[0], 200)
         self.assertEqual(self.call("GET", f"/jobs/{job['id']}/preview/other.js")[0], 404)
         self.assertEqual(self.call("GET", f"/jobs/{job['id']}/firmware.bin")[0], 409)  # a preview has no firmware
-        for bad in ({"usermods": ["../x"]}, {"usermods": []}, {"usermods": ["my_fx"], "pins": "p.json"}):
+        for bad in ({"usermods": ["../x"]}, {"usermods": []}, {"usermods": ["my_fx"], "pins": "nope.json"},
+                    {"usermods": ["my_fx"], "target": "board"}):
             self.assertEqual(self.call("POST", "/previews", bad)[0], 400)
+
+    def test_preview_colours_come_from_a_pins_files_wled(self):
+        # exact colours: the job carries the WLED commit of the pins file (the newest by default)
+        self.start()
+        status, job = self.call("POST", "/previews", {"usermods": ["my_fx"]})
+        self.assertEqual(status, 202)
+        self.assertEqual((job["pins"], job["wled_commit"]), ("p.json", "a" * 40))
+        _, job = self.call("POST", "/previews", {"usermods": ["my_fx"], "pins": "p.json"})
+        self.assertEqual(job["wled_repo"], "https://example.invalid/wled")
 
     def test_gate_job_has_no_preview(self):
         self.start()

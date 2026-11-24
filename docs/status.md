@@ -47,29 +47,11 @@ Updated 2026-11-23.
 2. Hardening still open (pip `--require-hashes` done 2026-11-23): an apt snapshot; an `--offline` rerun with no
    network; `--read-only`. (The egress allowlist is done: wled-studio's compose runs the builder on
    an internal network behind a squid allowlist, tested end to end by its `firmware-e2e` workflow.)
-3. Exact colours in the preview: build WLED's own colour and palette helpers from the user's
-   checkout instead of the stand-ins. **Spiked 2026-11-24** against 16.0.1's checkout, compiled
-   with Emscripten 7.0.1:
-   - `src/dependencies/fastled_slim` compiles as it is; `palettes.cpp` (the 7 FastLED and 59
-     gradient palettes, pure data) compiles with stand-ins for `PROGMEM`, `pgm_read_*`,
-     `memcpy_P` and `byte`;
-   - `colors.cpp` doesn't compile whole: it mixes the pure colour maths (`color_blend`,
-     `color_fade`, `ColorFromPalette`, `hsv2rgb_spectrum`, `rgb2hsv`) with custom-palette file
-     loading and the random palette. Extract the pure functions by name, as `manifest.py` reads
-     `FX.cpp`;
-   - `Segment::loadPalette` and `Segment::color_from_palette` (`FX_fcn.cpp`) are what effects see.
-     Their bodies use `colors`, `palette`, `_default_palette`, `_randomPalette`, `_isRGB`,
-     `paletteBlend`, `_currentPalette`, `getCurrentColor()`, `vLength()`, `customPalettes`,
-     `usermodPalettes` and the palette id constants from `const.h`. Extract them too, and give the
-     shim's `Segment` those members, so the bodies compile unchanged;
-   - the catch: `colors.h` defines `RGBW32`, `R()`… itself, and `const.h` brings more. The shim
-     must take WLED's definitions when building with a checkout, and keep its own without one;
-   - design: `build.sh` takes an optional checkout (`WLED_SRC`); the job service passes the
-     target's checkout (the gate's work folder, or a fresh one at the pins' commit); without one,
-     the preview stays approximate, as today. Nothing of WLED's goes into this repo. The app then
-     offers WLED's palettes by name in the preview (names from the device or the manifest);
-   - test: palette entries and blends checked against values computed by the same functions in
-     a native build of the extracted code.
+3. ~~Exact colours in the preview~~ (done 2026-11-24): a preview built with a WLED checkout runs
+   WLED's own colour and palette code, extracted by name at build time (`preview/wled_colors.py`);
+   the job service builds previews this way from a pins file's WLED commit. Tested against the
+   checkout's own palette data: every 16-entry palette entry for entry, and WLED's blending to
+   the bit. Not covered: gamma, auto-white and the brightness limiter (WLED's bus layer).
 4. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
    driven from the app.
 

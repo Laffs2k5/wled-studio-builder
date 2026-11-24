@@ -16,15 +16,18 @@ jobs that passed the gate, the firmware image.
   GET  /jobs/<id>/log         the job's build log (last 200 kB)
   GET  /jobs/<id>/firmware.bin  only if the job passed the gate
   GET  /jobs/<id>/effects.json  the custom image's effect list (id, name, metadata), if it passed
-  POST /previews              {"usermods": ["name", ...]}: compile them to WebAssembly for the
-                              browser preview (preview/); Emscripten is installed into the work
-                              volume on first use (EMSDK_VERSION)
+  POST /previews              {"usermods": ["name", ...], "pins": "x.json"?}: compile them to
+                              WebAssembly for the browser preview (preview/); Emscripten is
+                              installed into the work volume on first use (EMSDK_VERSION). Exact
+                              colours: WLED's colour code from the pins file's WLED commit
+                              (fetched into the work volume once), see preview_pins()
   GET  /jobs/<id>/preview/preview.mjs, .../preview.wasm   a compiled preview
 
 Settings (environment): WLED_STUDIO_PINS_DIR, WLED_STUDIO_USERMODS_DIRS (colon-
 separated; default /effects and the bundled examples), WLED_STUDIO_JOBS_DIR
 (/out/jobs), WLED_STUDIO_WORK (/work), WLED_STUDIO_SERVICE_TOKEN (optional
-bearer token), WLED_STUDIO_SERVICE_BIND (0.0.0.0:8090).
+bearer token), WLED_STUDIO_SERVICE_BIND (0.0.0.0:8090), WLED_STUDIO_PREVIEW_PINS (the pins
+file whose WLED gives previews exact colours; default: the newest).
 
 Standard library only.
 """
@@ -63,6 +66,7 @@ class Config:
         self.jobs_dir = Path(env.get("WLED_STUDIO_JOBS_DIR", "/out/jobs"))
         self.work = Path(env.get("WLED_STUDIO_WORK", "/work"))
         self.token = env.get("WLED_STUDIO_SERVICE_TOKEN") or None
+        self.preview_pins = env.get("WLED_STUDIO_PREVIEW_PINS") or None
         host, _, port = env.get("WLED_STUDIO_SERVICE_BIND", "0.0.0.0:8090").rpartition(":")
         self.bind = (host or "0.0.0.0", int(port))
 
@@ -115,14 +119,33 @@ def validate_job(cfg: Config, body: object) -> dict:
     return {"pins": pins, "target": target, "usermods": usermods, "usermod_paths": [str(p) for p in paths]}
 
 
+def preview_pins(cfg: Config, name: str | None) -> str | None:
+    """The pins file whose WLED gives a preview its exact colours: the one asked for, else
+    WLED_STUDIO_PREVIEW_PINS, else the newest by name; None if there are none (approximate)."""
+    if name is not None:
+        if not isinstance(name, str) or not PINS_NAME_RE.match(name) or not (cfg.pins_dir / name).is_file():
+            raise BadRequest("unknown pins file")
+        return name
+    if cfg.preview_pins and (cfg.pins_dir / cfg.preview_pins).is_file():
+        return cfg.preview_pins
+    files = sorted(p.name for p in cfg.pins_dir.glob("*.json")) if cfg.pins_dir.is_dir() else []
+    return files[-1] if files else None
+
+
 def validate_preview(cfg: Config, body: object) -> dict:
-    if not isinstance(body, dict) or set(body) - {"usermods"}:
-        raise BadRequest("expected {usermods}")
+    if not isinstance(body, dict) or set(body) - {"usermods", "pins"}:
+        raise BadRequest("expected {usermods, pins?}")
     usermods = body.get("usermods")
     if not isinstance(usermods, list) or not 1 <= len(usermods) <= 8 or not all(isinstance(u, str) for u in usermods):
         raise BadRequest("usermods: a list of 1-8 names")
     paths = [find_usermod(cfg, u) for u in usermods]
-    return {"kind": "preview", "usermods": usermods, "usermod_paths": [str(p) for p in paths]}
+    job = {"kind": "preview", "usermods": usermods, "usermod_paths": [str(p) for p in paths]}
+    pins = preview_pins(cfg, body.get("pins"))
+    if pins:
+        wled = json.loads((cfg.pins_dir / pins).read_text(encoding="utf-8")).get("wled", {})
+        if isinstance(wled.get("repo"), str) and isinstance(wled.get("commit"), str) and re.fullmatch(r"[0-9a-f]{40}", wled["commit"]):
+            job.update(pins=pins, wled_repo=wled["repo"], wled_commit=wled["commit"])
+    return job
 
 
 def run_job(cfg: Config, job: dict, job_dir: Path) -> int:  # pragma: no cover - runs real builds
@@ -135,6 +158,15 @@ def run_job(cfg: Config, job: dict, job_dir: Path) -> int:  # pragma: no cover -
                 f"'{emsdk}/emsdk' install {EMSDK_VERSION} >/dev/null\n"
                 f"'{emsdk}/emsdk' activate {EMSDK_VERSION} >/dev/null\n"
                 f". '{emsdk}/emsdk_env.sh' >/dev/null 2>&1\n"
+            )
+            if job.get("wled_commit"):  # exact colours: WLED's own colour code from its checkout
+                src = cfg.work / "preview-wled" / job["wled_commit"]
+                script += (
+                    f"if [ ! -f '{src}/wled00/colors.h' ]; then rm -rf '{src}'; mkdir -p '{src}'; cd '{src}'; git init -q;"
+                    f" git fetch -q --depth 1 '{job['wled_repo']}' {job['wled_commit']}; git checkout -q FETCH_HEAD; cd - >/dev/null; fi\n"
+                    f"export WLED_SRC='{src}'\n"
+                )
+            script += (
                 f"'{HERE.parent / 'preview' / 'build.sh'}' '{job_dir / 'preview'}' "
                 + " ".join(f"'{p}'" for p in job["usermod_paths"]) + "\n"
             )
