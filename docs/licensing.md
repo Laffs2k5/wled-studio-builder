@@ -40,6 +40,16 @@ it). `preview/wled_colors.py` takes them from the checkout at build time; **none
 in this repository**. Like firmware, the result is yours to use: it runs in your browser. If you
 distribute a compiled preview, the same terms as for firmware apply (WLED's source, the notices).
 
+## Virtual devices
+
+A virtual WLED (`virtual/`, its image `virtual/Dockerfile`) compiles much of WLED into its
+WebAssembly: the effect engine, the state, preset, playlist and file code, the bundled libraries.
+`virtual/virtual_wled.py` takes them from the checkout at build time; none of it is stored in this
+repository. Built and run on your own machines, it is private use, like firmware. **This
+repository's CI builds the image only to test it and publishes none.** If you distribute a
+virtual device image, the same terms as for firmware apply: its `twin.json` names the WLED commit
+and the usermods, which is where the corresponding source is.
+
 ## Example usermod
 
 `examples/usermods/studio_example_fx` is our own code, EUPL-1.2. It compiles against WLED's
