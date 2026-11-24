@@ -61,3 +61,17 @@ the sibling repo `wled-studio`.
   PlatformIO's version, edit `docker/requirements.in` and regenerate:
   `uv pip compile docker/requirements.in --universal --python-version 3.11 --generate-hashes --no-header -o docker/requirements.txt`.
 - PowerShell `*>` redirection writes UTF-16 logs; read them with `iconv -f utf-16`.
+- **The preview shim must be no looser than WLED** where it can be checked: `mode_ptr` is nested in
+  `WS2812FX`, `Usermod::setup()`/`loop()` are pure virtual, drawing methods are `const` and
+  `color_wheel` is a Segment method. A usermod that passed a looser shim failed the real build
+  (2026-11-23).
+- **Exact colours copy WLED's code by name** (`preview/wled_colors.py`). When a WLED release
+  renames or moves one of the functions, the extractor stops with "not found in the checkout":
+  fix the name list, never paste WLED's code here. WLED's headers bring their own `RGBW32`, `R()`…,
+  `scale8`, `qadd8`; the shim leaves its own out in exact mode (`PREVIEW_WLED_COLORS`).
+- A `const` array at namespace scope is internal in C++: generated code that another file reads
+  (`JSON_palette_names`) needs an `extern` declaration first, or the link fails.
+- WLED's `color_from_palette(…, moving=false, …)` remaps the index so the palette doesn't wrap
+  (`index * 0xF0 >> 8`): index 16 is *not* entry 1. Tests that want exact entries pass
+  `moving=true`.
+- The job service refuses a usermod folder that's a symlink (path confinement). Test with a copy.
