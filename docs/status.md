@@ -40,6 +40,12 @@ Updated 2026-11-23.
 - **CI:** unit tests; a matrix over every target on Windows and Linux (weekly too, for upstream
   drift); image build, test and publish; preview compile and frame tests.
 
+- **Virtual WLED** (`virtual/`, 2026-11-24): WLED's own effect engine compiled to WebAssembly from
+  a checkout, with usermods; the effect preview's API, so the preview's and a usermod's tests run
+  on the real engine; a smoke test over every effect (the list equal to the image's, no crashes).
+  QuinLED 16.0.1 with wled-studio-effects: 242 effects id for id, 165 run, none crash. Next: the
+  gate runs it (flags from the build), then a virtual device the app can use.
+
 ## Next
 
 1. More vendor releases (QuinLED 0.15.x; stock WLED's esp32 builds), using `discover.py` and the

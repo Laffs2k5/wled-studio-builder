@@ -25,7 +25,9 @@ test("the example usermod registers its effect at its fixed id, behind hidden pl
   const { m, names } = await preview(60);
   assert.equal(names[0], "Solid");
   assert.equal(names[254], "Studio Comet");
-  assert.ok(names.slice(1, 254).every((n) => n === "RSVD"));
+  // landed at its fixed id, padded below with placeholders (not appended at the first free slot);
+  // a virtual WLED (the real engine) also has WLED's own gaps further down
+  assert.equal(names[253], "RSVD");
   assert.equal(m.UTF8ToString(m._preview_effect_metadata(254)), "Speed,Tail;!;!;1;sx=128,ix=200");
 });
 

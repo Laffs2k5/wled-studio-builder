@@ -57,4 +57,12 @@ jobs:
           WLED_SRC="$src" EXACT_DIR="$RUNNER_TEMP/exact" APPROX_DIR="$RUNNER_TEMP/approx" node --test preview/test/palettes.test.mjs
           WLED_SRC="$src" preview/build.sh "$RUNNER_TEMP/exact-fx" examples/usermods/studio_example_fx
           PREVIEW_DIR="$RUNNER_TEMP/exact-fx" node --test preview/test/preview.test.mjs
+      - name: Virtual WLED, WLED's own engine, with the example usermod
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          # the Dig-Next-2's flags that shape the effect list (the gate will take them from the build)
+          export VIRTUAL_FLAGS="-DUSERMOD_AUDIOREACTIVE -DWLED_PS_DONT_REPLACE_FX -DWLED_ENABLE_GIF -DBOARD_HAS_PSRAM"
+          virtual/build.sh "$RUNNER_TEMP/virtual" "$RUNNER_TEMP/wled" examples/usermods/studio_example_fx
+          VIRTUAL_DIR="$RUNNER_TEMP/virtual" node --test virtual/test/smoke.test.mjs
+          PREVIEW_DIR="$RUNNER_TEMP/virtual" node --test preview/test/preview.test.mjs
 
