@@ -103,6 +103,12 @@ refuses: a twin runs the firmware it was built from), its web UI and settings pa
 small live-view page), the network (sync, realtime input such as DDP, MQTT, Alexa), 2D matrices
 and a real sound input (sound-reactive effects get the simulated sound).
 
+`Dockerfile` builds the device as an image: the twin of the pinned firmware (default QuinLED's
+16.0.1 for the Dig-Next-2, its effect flags), optionally with usermods as a named build context
+(`--build-context usermods=<a usermod folder, or a folder of them>`), then a small Node runtime
+running as uid 10001 with `DATA_DIR=/data`. CI (`virtual-image.yml`) builds it stock and with the
+example usermod, runs both read-only and checks them as WLED devices. It doesn't publish them.
+
 ## What a twin also needs
 
 The device's own settings: gamma (`virtual_boot`'s third argument, filling WLED's gamma tables;

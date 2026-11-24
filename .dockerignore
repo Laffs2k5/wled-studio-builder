@@ -1,0 +1,5 @@
+# the builder's work and output folders hold WLED checkouts and firmware: never in an image
+work/
+out/
+.git/
+**/node_modules/
