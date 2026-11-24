@@ -42,17 +42,46 @@ bool SegmentRuntime::allocateData(size_t len) {
 }
 void SegmentRuntime::deallocateData() { free(data); data = nullptr; dataSize = 0; }
 
+uint8_t paletteBlend = 0;
 uint16_t Segment::vLength() { return uint16_t(seg.pixels.size()); }
+uint32_t Segment::getCurrentColor(unsigned i) { return strip._currentSegment->colors[i < 3 ? i : 0]; }
 void Segment::setPixelColor(int i, uint32_t c) { if (i >= 0 && size_t(i) < pixels.size()) pixels[i] = c; }
 uint32_t Segment::getPixelColor(int i) const { return (i >= 0 && size_t(i) < pixels.size()) ? pixels[i] : 0; }
-void Segment::fill(uint32_t c) { for (auto& p : pixels) p = c; }
-void Segment::fade_out(uint8_t rate) {
+void Segment::setPixelColorRaw(unsigned i, uint32_t c) const { if (i < pixels.size()) pixels[i] = c; }
+uint32_t Segment::getPixelColorRaw(unsigned i) const { return i < pixels.size() ? pixels[i] : 0; }
+
+#ifdef PREVIEW_WLED_COLORS
+// exact mode: fill, the fades, blur, color_wheel, color_from_palette and loadPalette are WLED's
+// own (wled_colors.cpp, generated from the checkout); here only the palette state they use
+CRGBPalette16 Segment::_currentPalette;
+CRGBPalette16 Segment::_randomPalette;
+#else
+// approximate mode: our own stand-ins
+void Segment::fill(uint32_t c) const { for (auto& p : pixels) p = c; }
+void Segment::fade_out(uint8_t rate) const {
   // towards the background colour; WLED's exact curve differs (approximation)
   uint32_t bg = colors[1];
   uint8_t keep = 255 - ((255 - rate) / 2 + 1) / 1;
   for (auto& p : pixels) p = color_blend(bg, p, keep);
 }
-void Segment::fadeToBlackBy(uint8_t amount) { for (auto& p : pixels) p = color_blend(p, 0, amount); }
+void Segment::fadeToBlackBy(uint8_t amount) const { for (auto& p : pixels) p = color_blend(p, 0, amount); }
+void Segment::fadeToSecondaryBy(uint8_t amount) const { for (auto& p : pixels) p = color_blend(p, colors[1], amount); }
+void Segment::blur(uint8_t amount, bool smear) const {
+  if (pixels.size() < 2 || amount == 0) return;
+  std::vector<uint32_t> was(pixels);
+  for (size_t i = 0; i < pixels.size(); i++) {   // each LED towards its neighbours' mean
+    uint32_t l = was[i ? i - 1 : i], r = was[i + 1 < was.size() ? i + 1 : i];
+    uint32_t around = color_blend(l, r, 128);
+    pixels[i] = color_blend(was[i], around, uint8_t(smear ? amount / 2 : amount / 2));
+  }
+}
+uint32_t Segment::color_wheel(uint8_t pos) const {
+  pos = 255 - pos;
+  if (pos < 85) return RGBW32(255 - pos * 3, 0, pos * 3, 0);
+  if (pos < 170) { pos -= 85; return RGBW32(0, pos * 3, 255 - pos * 3, 0); }
+  pos -= 170;
+  return RGBW32(pos * 3, 255 - pos * 3, 0, 0);
+}
 uint32_t Segment::color_from_palette(uint16_t i, bool mapping, bool, uint8_t mcol, uint8_t pbri) const {
   uint32_t c;
   if (palette == 0) {
@@ -63,6 +92,7 @@ uint32_t Segment::color_from_palette(uint16_t i, bool mapping, bool, uint8_t mco
   }
   return pbri == 255 ? c : color_blend(0, c, pbri);
 }
+#endif
 
 uint8_t WS2812FX::getModeCount() const { return uint8_t(effects().size()); }
 uint8_t WS2812FX::addEffect(uint8_t id, WS2812FX::mode_ptr fn, const char* metadata) {
@@ -75,28 +105,26 @@ uint8_t WS2812FX::addEffect(uint8_t id, WS2812FX::mode_ptr fn, const char* metad
 
 uint8_t sin8_t(uint8_t theta) { return uint8_t(lround(127.5 + 127.5 * sin(theta * 2 * M_PI / 256.0))); }
 uint8_t cos8_t(uint8_t theta) { return sin8_t(uint8_t(theta + 64)); }
+#ifndef PREVIEW_WLED_COLORS
 uint8_t scale8(uint8_t i, uint8_t scale) { return uint8_t((uint16_t(i) * (1 + uint16_t(scale))) >> 8); }
 uint8_t qadd8(uint8_t a, uint8_t b) { unsigned t = a + b; return t > 255 ? 255 : uint8_t(t); }
 uint8_t qsub8(uint8_t a, uint8_t b) { return a > b ? uint8_t(a - b) : 0; }
+#endif
 uint8_t beatsin8_t(uint16_t bpm, uint8_t low, uint8_t high, uint32_t timebase, uint8_t phase) {
   uint8_t beat = uint8_t(((strip.now - timebase) * bpm * 256 / 60000) & 0xFF);
   return uint8_t(low + scale8(sin8_t(uint8_t(beat + phase)), uint8_t(high - low)));
 }
 uint8_t hw_random8() { rng = rng * 1664525u + 1013904223u; return uint8_t(rng >> 24); }
-uint8_t hw_random8(uint8_t lim) { return uint8_t((uint16_t(hw_random8()) * lim) >> 8); }
+uint8_t hw_random8(uint32_t upperlimit) { return uint8_t((hw_random8() * upperlimit) >> 8); }
+uint8_t hw_random8(uint32_t lowerlimit, uint32_t upperlimit) { return uint8_t(lowerlimit + hw_random8(upperlimit - lowerlimit)); }
 uint16_t hw_random16() { rng = rng * 1664525u + 1013904223u; return uint16_t(rng >> 16); }
 uint16_t hw_random16(uint16_t lim) { return uint16_t((uint32_t(hw_random16()) * lim) >> 16); }
+#ifndef PREVIEW_WLED_COLORS
 uint32_t color_blend(uint32_t a, uint32_t b, uint8_t blend) {
   auto mix = [blend](uint8_t x, uint8_t y) { return uint8_t((x * (255 - blend) + y * blend) / 255); };
   return RGBW32(mix(R(a), R(b)), mix(G(a), G(b)), mix(B(a), B(b)), mix(W(a), W(b)));
 }
-uint32_t color_wheel(uint8_t pos) {
-  pos = 255 - pos;
-  if (pos < 85) return RGBW32(255 - pos * 3, 0, pos * 3, 0);
-  if (pos < 170) { pos -= 85; return RGBW32(0, pos * 3, 255 - pos * 3, 0); }
-  pos -= 170;
-  return RGBW32(pos * 3, 255 - pos * 3, 0, 0);
-}
+#endif
 
 // --- the C API for JavaScript ---------------------------------------------------
 
@@ -150,7 +178,22 @@ EXPORT void preview_setup(int length) {
   if (effects().empty()) {
     effects().push_back({[] { SEGMENT.fill(SEGCOLOR(0)); }, "Solid"});
     for (Usermod* m : usermods()) m->setup();
+#ifdef PREVIEW_WLED_COLORS
+    Segment::_randomPalette = generateRandomPalette();
+#endif
   }
+}
+
+#ifdef PREVIEW_WLED_COLORS
+extern const char JSON_palette_names[];
+#endif
+/** The palettes by id as a JSON array of names, in exact mode; "" in approximate mode. */
+EXPORT const char* preview_palette_names() {
+#ifdef PREVIEW_WLED_COLORS
+  return JSON_palette_names;
+#else
+  return "";
+#endif
 }
 
 // effects are numbered by their id; reserved placeholders ("RSVD") are listed too, as on the device
@@ -171,6 +214,13 @@ EXPORT int preview_select(int id) {
   SEGENV_.call = 0; SEGENV_.step = 0; SEGENV_.aux0 = 0; SEGENV_.aux1 = 0;
   SEGENV_.deallocateData();
   seg.fill(0);
+  // as WLED's setMode: palette 0 shows the effect's "pal=" default, else Party (6)
+  {
+    const std::string& md = effects()[id].metadata;
+    size_t at = md.find("pal=", md.rfind(';') == std::string::npos ? 0 : md.rfind(';'));
+    int pal = at == std::string::npos ? 0 : atoi(md.c_str() + at + 4);
+    seg._default_palette = uint8_t(pal > 0 ? pal : 6);
+  }
   return id;
 }
 EXPORT void preview_set(int key, int value) {
@@ -191,6 +241,9 @@ EXPORT uint32_t* preview_frame(uint32_t now_ms) {
   if (current < 0) return seg.pixels.data();
   strip.now = now_ms;
   strip._currentSegment = &seg;
+#ifdef PREVIEW_WLED_COLORS
+  seg.loadPalette(Segment::_currentPalette, seg.palette);   // as WLED does before each frame
+#endif
   effects()[current].fn();
   SEGENV_.call++;
   return seg.pixels.data();

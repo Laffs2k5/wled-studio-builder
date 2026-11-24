@@ -46,4 +46,15 @@ jobs:
           PREVIEW_DIR="$RUNNER_TEMP/preview" node --test preview/test/preview.test.mjs
           preview/build.sh "$RUNNER_TEMP/sound" preview/test/sound_probe
           SOUND_DIR="$RUNNER_TEMP/sound" node --test preview/test/sound.test.mjs
+      - name: Exact colours, with WLED's own colour code from the pinned checkout
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          read -r repo commit < <(python3 -c 'import json; w = json.load(open("pins/quinled-16.0.1.json"))["wled"]; print(w["repo"], w["commit"])')
+          src="$RUNNER_TEMP/wled"
+          git init -q "$src" && git -C "$src" fetch -q --depth 1 "$repo" "$commit" && git -C "$src" checkout -q FETCH_HEAD
+          WLED_SRC="$src" preview/build.sh "$RUNNER_TEMP/exact" preview/test/palette_probe
+          preview/build.sh "$RUNNER_TEMP/approx" preview/test/palette_probe
+          WLED_SRC="$src" EXACT_DIR="$RUNNER_TEMP/exact" APPROX_DIR="$RUNNER_TEMP/approx" node --test preview/test/palettes.test.mjs
+          WLED_SRC="$src" preview/build.sh "$RUNNER_TEMP/exact-fx" examples/usermods/studio_example_fx
+          PREVIEW_DIR="$RUNNER_TEMP/exact-fx" node --test preview/test/preview.test.mjs
 

@@ -31,6 +31,15 @@ If you **distribute** an image, the EUPL applies to it:
 
 WLED's and the vendors' names and trademarks are theirs.
 
+## Previews with exact colours
+
+A preview built with a WLED checkout (`WLED_SRC`, see `preview/README.md`) compiles part of WLED's
+code into its WebAssembly: colour and palette functions from `colors.cpp` and `FX_fcn.cpp`, the
+palettes (`palettes.cpp`) and fastled_slim (MIT, derived from FastLED; its licence is copied in with
+it). `preview/wled_colors.py` takes them from the checkout at build time; **none of it is stored
+in this repository**. Like firmware, the result is yours to use: it runs in your browser. If you
+distribute a compiled preview, the same terms as for firmware apply (WLED's source, the notices).
+
 ## Example usermod
 
 `examples/usermods/studio_example_fx` is our own code, EUPL-1.2. It compiles against WLED's

@@ -4,9 +4,12 @@
 // It implements the part of WLED's usermod and effect API that effect code uses
 // (Usermod, REGISTER_USERMOD, strip.addEffect, SEGMENT, SEGENV, SEGLEN, colours),
 // so an effect usermod written for WLED compiles unchanged to WebAssembly. This
-// is our own implementation of that interface, not WLED's code; where WLED's
-// exact maths matter (fades, palettes) it is an approximation, and the preview
-// says so.
+// is our own implementation of that interface, not WLED's code.
+//
+// Colours come in two modes:
+// - approximate (the default): our own stand-ins for fades, palettes and the colour wheel;
+// - exact (PREVIEW_WLED_COLORS, when build.sh is given a WLED checkout): WLED's own colour and
+//   palette code, generated from that checkout by wled_colors.py, compiles in instead.
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
@@ -49,12 +52,18 @@ struct JsonObject {
   template <typename T> JsonObject& operator=(const T&) { return *this; }
 };
 
+#ifdef PREVIEW_WLED_COLORS
+// WLED's colour types, macros and functions, from the checkout (generated: see wled_colors.py)
+#include "wled_colors_prelude.h"
+#include "colors.h"
+#else
 // colours: WLED packs them as 0xWWRRGGBB
 #define RGBW32(r, g, b, w) ((uint32_t(w) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b))
 #define R(c) (uint8_t((c) >> 16))
 #define G(c) (uint8_t((c) >> 8))
 #define B(c) (uint8_t(c))
 #define W(c) (uint8_t((c) >> 24))
+#endif
 
 struct SegmentRuntime {
   uint32_t call = 0, step = 0;
@@ -72,17 +81,35 @@ struct Segment {
   uint8_t palette = 0;
   uint8_t soundSim = 0;
   uint32_t colors[3] = {RGBW32(255, 160, 0, 0), 0, 0};
-  std::vector<uint32_t> pixels;
+  mutable std::vector<uint32_t> pixels;   // mutable: WLED's drawing methods are const
+  bool _isRGB = true;
+  uint8_t _default_palette = 6;           // palette 0 shows this one (the effect's "pal=" default)
 
   static uint16_t vLength();
+  unsigned length() const { return vLength(); }
+  unsigned rawLength() const { return vLength(); }
+  bool isActive() const { return true; }
+  static uint32_t getCurrentColor(unsigned i);
   void setPixelColor(int i, uint32_t c);
   void setPixelColor(int i, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0) { setPixelColor(i, RGBW32(r, g, b, w)); }
   uint32_t getPixelColor(int i) const;
-  void fill(uint32_t c);
-  void fade_out(uint8_t rate);
-  void fadeToBlackBy(uint8_t amount);
+  void setPixelColorRaw(unsigned i, uint32_t c) const;
+  uint32_t getPixelColorRaw(unsigned i) const;
+  // as WLED declares them; in exact mode the bodies are WLED's own
+  void fill(uint32_t c) const;
+  void fade_out(uint8_t rate) const;
+  void fadeToBlackBy(uint8_t fadeBy) const;
+  void fadeToSecondaryBy(uint8_t fadeBy) const;
+  void blur(uint8_t blur_amount, bool smear = false) const;
+  uint32_t color_wheel(uint8_t pos) const;
   uint32_t color_from_palette(uint16_t i, bool mapping, bool moving, uint8_t mcol, uint8_t pbri = 255) const;
+#ifdef PREVIEW_WLED_COLORS
+  void loadPalette(CRGBPalette16& targetPalette, uint8_t pal);
+  static CRGBPalette16 _currentPalette;
+  static CRGBPalette16 _randomPalette;
+#endif
 };
+extern uint8_t paletteBlend;   // WLED's global: how palettes blend and wrap (0, as WLED's default)
 
 // mode_ptr is nested, as in WLED: a usermod that names it unqualified fails there, so it fails here too
 struct WS2812FX {
@@ -103,16 +130,18 @@ extern SegmentRuntime SEGENV_;
 // a few of the integer helpers effects commonly use
 uint8_t sin8_t(uint8_t theta);
 uint8_t cos8_t(uint8_t theta);
+#ifndef PREVIEW_WLED_COLORS   // in exact mode fastled_slim has them
 uint8_t scale8(uint8_t i, uint8_t scale);
 uint8_t qadd8(uint8_t a, uint8_t b);
 uint8_t qsub8(uint8_t a, uint8_t b);
+uint32_t color_blend(uint32_t a, uint32_t b, uint8_t blend);
+#endif
 uint8_t beatsin8_t(uint16_t bpm, uint8_t low = 0, uint8_t high = 255, uint32_t timebase = 0, uint8_t phase = 0);
 uint8_t hw_random8();
-uint8_t hw_random8(uint8_t lim);
+uint8_t hw_random8(uint32_t upperlimit);
+uint8_t hw_random8(uint32_t lowerlimit, uint32_t upperlimit);
 uint16_t hw_random16();
 uint16_t hw_random16(uint16_t lim);
-uint32_t color_blend(uint32_t a, uint32_t b, uint8_t blend);
-uint32_t color_wheel(uint8_t pos);
 template <typename T> T map(T x, T in_min, T in_max, T out_min, T out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
