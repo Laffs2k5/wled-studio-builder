@@ -62,6 +62,8 @@ COPY --chown=builder:builder studio/ /home/builder/studio-src/studio/
 COPY --chown=builder:builder tests/ /home/builder/studio-src/tests/
 COPY --chown=builder:builder examples/ /home/builder/studio-src/examples/
 COPY --chown=builder:builder preview/ /home/builder/studio-src/preview/
+# the gate's virtual check builds the image's twin (studio/virtual_check.py runs virtual/build.sh)
+COPY --chown=builder:builder virtual/ /home/builder/studio-src/virtual/
 
 # Both volumes must be writable by uid 10001 (chown them on the host first).
 # The job service for the web app: --entrypoint /home/builder/venv/bin/python

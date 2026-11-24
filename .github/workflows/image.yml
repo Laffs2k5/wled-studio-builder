@@ -10,9 +10,9 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", "preview/**", ".github/workflows/image.yml"]
+    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", "preview/**", "virtual/**", ".github/workflows/image.yml"]
   pull_request:
-    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", "preview/**", ".github/workflows/image.yml"]
+    paths: ["docker/**", "studio/**", "pins/**", "tests/**", "examples/**", "preview/**", "virtual/**", ".github/workflows/image.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -62,6 +62,12 @@ jobs:
 
       - name: Tool versions
         run: docker run --rm --entrypoint sh "$LOCAL_TAG" -c 'id; python3 --version; node --version; pio --version; git --version'
+
+      - name: The gate's files are in the image
+        # the gate's virtual check runs virtual/build.sh; without it every gate fails (2026-11-24)
+        run: |
+          docker run --rm --entrypoint sh -w /home/builder/studio-src "$LOCAL_TAG" -c \
+            'for f in studio/gate.py studio/virtual_check.py virtual/build.sh virtual/virtual_wled.py virtual/test/smoke.test.mjs preview/wled_colors.py; do test -f "$f" || { echo "missing: $f"; exit 1; }; done; echo ok'
 
       - name: Reproduce the bundled vendor image (--check)
         run: |
