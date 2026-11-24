@@ -75,3 +75,15 @@ the sibling repo `wled-studio`.
   (`index * 0xF0 >> 8`): index 16 is *not* entry 1. Tests that want exact entries pass
   `moving=true`.
 - The job service refuses a usermod folder that's a symlink (path confinement). Test with a copy.
+- **Virtual WLED (`virtual/`) gotchas:** a `Bus` counts only with `_valid` and its capabilities
+  set (`_hasRgb`/`_hasWhite`): without RGB a segment is on/off only and refuses black as its first
+  colour. `makeAutoSegments()` makes segment 0; `calcGammaTable()` fills the tables Twinklefox
+  needs. `service()` skips a frame within `MIN_FRAME_DELAY` of the last (0 at boot), so the clock
+  starts a second ahead and `strip.timebase` takes it off again. The board's `-D` flags make the
+  effect list (`WLED_PS_DONT_REPLACE_FX`, `WLED_ENABLE_GIF`): compare with the image's
+  `effects.json`. Frames come from WLED's pixel buffer (`strip.getPixelColor`), not the bus.
+- **Stand-in templates must return by value:** `auto min(T a, U b) -> decltype(a < b ? a : b)` is
+  a reference to a parameter (dangling). It made Fireworks 1D overflow and 48 effects dark in the
+  virtual WLED, and lurked in the preview shim too. Use `std::common_type<T, U>::type`.
+- Arduino's `constrain` is a macro; ArduinoJson needs `ARDUINOJSON_ENABLE_ARDUINO_STRING` and a
+  `String` with `concat()` (and a `StringSumHelper`) for usermods that add a `String` to JSON.
