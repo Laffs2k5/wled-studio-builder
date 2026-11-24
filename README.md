@@ -8,6 +8,11 @@ flashed.
 16.0.1, is reproduced: identical in every byte of code and data, apart from one embedded hash of
 the ELF file ([docs/reproductions.md](docs/reproductions.md)).
 
+> **No warranty, no liability, no support.** Flashing firmware can fail and leave a device unable
+> to start, also with an image this tool built and checked. You use it entirely at your own risk;
+> the authors accept no liability for failed flashes, bricked devices or any other damage or loss,
+> and offer no support of any kind. See [DISCLAIMER.md](DISCLAIMER.md).
+
 It is the firmware half of **wled-studio**; the web app (looks, effects, live preview) is a
 separate repository that runs this builder as a service.
 
