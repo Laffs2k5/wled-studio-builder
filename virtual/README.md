@@ -34,7 +34,9 @@ Build with the firmware's own `-D` flags: they decide what's compiled in. For Qu
 Dig-Next-2 16.0.1 `-DWLED_PS_DONT_REPLACE_FX` keeps the classic effects (without it Fire 2012,
 Rolling Balls and others are particle-system replacements or gone) and `-DWLED_ENABLE_GIF` adds
 the Image effect. With them the list equals the image's `effects.json`, id for id (242 with
-wled-studio-effects). The gate will take the flags from the build's compile command.
+wled-studio-effects). Checked against a real Dig-Next-2 running QuinLED's 16.0.1 (2026-11-24): the
+stock virtual build's 220 effects equal the device's `/json/eff` and `/json/fxdata`, every name and
+every metadata string. The gate will take the flags from the build's compile command.
 
 ## Tests
 
