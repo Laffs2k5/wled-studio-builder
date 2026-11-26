@@ -50,16 +50,20 @@ Updated 2026-11-23.
 
 1. More vendor releases (QuinLED 0.15.x; stock WLED's esp32 builds), using `discover.py` and the
    matrix.
-2. Hardening still open (pip `--require-hashes` done 2026-11-23): an apt snapshot; an `--offline` rerun with no
-   network; `--read-only`. (The egress allowlist is done: wled-studio's compose runs the builder on
+2. Hardening still open (pip `--require-hashes` done 2026-11-23): an apt snapshot and `--read-only`.
+   `build.py --offline` now blocks the source/reference clients and keeps the proxy variables
+   pointed at a closed local endpoint; override provenance and a dependency fingerprint must match
+   the pins. Arbitrary build hooks still need the builder container's network isolation for an
+   absolute socket-level guarantee. (The egress allowlist is done: wled-studio's compose runs the builder on
    an internal network behind a squid allowlist, tested end to end by its `firmware-e2e` workflow.)
 3. ~~Exact colours in the preview~~ (done 2026-11-24): a preview built with a WLED checkout runs
    WLED's own colour and palette code, extracted by name at build time (`preview/wled_colors.py`);
    the job service builds previews this way from a pins file's WLED commit. Tested against the
    checkout's own palette data: every 16-entry palette entry for entry, and WLED's blending to
    the bit. Not covered: gamma, auto-white and the brightness limiter (WLED's bus layer).
-4. Flashing: OTA of a gate-passed image with a backup first and `/update?revert` as the way back,
-   driven from the app.
+4. ~~Flashing~~ (done 2026-11-26 on the spare WROVER): the full custom image went OTA through the
+   mTLS-only app path, both added effects ran, config/presets stayed byte-identical, and
+   `/update?revert` restored stock. The controller itself is still unchanged.
 
 ## Open design items
 
@@ -68,5 +72,5 @@ Updated 2026-11-23.
 
 ## Waiting on
 
-- **A spare ESP32** (ordered) for the first flash of a self-built image: boot, OTA, revert,
-  post-flash checks. Nothing has been flashed.
+- ~~A spare ESP32 for the first flash of a self-built image~~ (done 2026-11-26): USB recovery,
+  4 MB layout, Improv Wi-Fi provisioning, gate-passed OTA, post-flash checks and revert all passed.

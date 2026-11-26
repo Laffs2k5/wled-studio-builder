@@ -52,6 +52,14 @@ python -m venv .venv && .venv/bin/pip install platformio==6.2.0
 cat out/*/build-report.json      # check: [] when it matches the verified result for your host
 ```
 
+Add `--offline` to reuse a verified cache without fetching git inputs, the reference image or
+PlatformIO dependencies. Offline mode clears the environment's build output, so the result is
+recompiled rather than taken from PlatformIO's incremental cache. The override provenance and
+dependency fingerprint must match the current pins; an incomplete or stale cache fails closed instead
+of silently going online. Run the target once normally to populate it. Standard clients are forced
+offline; for an absolute guarantee against
+arbitrary build hooks opening sockets, also run the builder in a network-isolated container.
+
 On Windows, use `.venv\Scripts\python`. A container build is in `docker/Dockerfile`.
 
 ## Layout

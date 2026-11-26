@@ -83,6 +83,37 @@ class DownloadTests(unittest.TestCase):
         calls, err = self.run_with([self.http(404), b"never"])
         self.assertEqual((len(calls), err.code), (1, 404))
 
+    def test_offline_download_never_uses_the_network(self):
+        dest = Path(tempfile.mkdtemp()) / "missing.bin"
+        from unittest import mock
+        with mock.patch("urllib.request.urlopen") as net:
+            with self.assertRaisesRegex(SystemExit, "not cached"):
+                build.download("https://x/f", dest, offline=True)
+        net.assert_not_called()
+
+    def test_dependency_fingerprint_changes_with_effective_pins(self):
+        pins = {"wled": {"commit": "a"}, "override": {"commit": "b"}, "pins": {"u": "c"},
+                "extra_usermods": []}
+        first = build.dep_fingerprint(pins, "override", "platformio")
+        changed = build.dep_fingerprint({**pins, "pins": {"u": "d"}}, "override", "platformio")
+        self.assertNotEqual(first, changed)
+
+    def test_offline_checkout_reuses_a_cached_commit_without_fetching(self):
+        root = Path(tempfile.mkdtemp())
+        repo = root / "source"
+        repo.mkdir()
+        for args in (["init", "-q"], ["config", "user.email", "test@example.test"],
+                     ["config", "user.name", "Test"]):
+            build.run(["git", *args], cwd=repo)
+        (repo / "x").write_text("cached\n")
+        build.run(["git", "add", "x"], cwd=repo)
+        build.run(["git", "commit", "-qm", "cached"], cwd=repo)
+        build.run(["git", "remote", "add", "origin", "https://cached.invalid/repo.git"], cwd=repo)
+        commit = build.run(["git", "rev-parse", "HEAD"], cwd=repo, capture=True)
+        with unittest.mock.patch.object(build, "run", wraps=build.run) as run:
+            build.checkout("https://unavailable.invalid/repo.git", commit, repo, offline=True)
+        self.assertFalse(any(call.args[0][1:3] == ["fetch", "-q"] for call in run.call_args_list))
+
 
 class ImgDiffTests(unittest.TestCase):
     def write(self, data):

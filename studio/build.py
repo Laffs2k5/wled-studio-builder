@@ -53,11 +53,25 @@ def sha256(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+def dep_fingerprint(pins: dict, override: str, pio_ini: str) -> str:
+    """Inputs that decide PlatformIO's resolved dependency tree."""
+    payload = {
+        "wled_commit": pins["wled"]["commit"],
+        "override_commit": pins["override"]["commit"],
+        "override": override,
+        "pio_ini": pio_ini,
+        "pins": pins.get("pins", {}),
+        "usermods": pins.get("extra_usermods", []),
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
-def download(url: str, dest: Path, attempts: int = 3, sleep=time.sleep) -> None:
+
+def download(url: str, dest: Path, attempts: int = 3, sleep=time.sleep, offline: bool = False) -> None:
     """Fetch url to dest. A server error (5xx) or a network failure is retried with backoff:
     raw.githubusercontent.com answers 503 "Backend.max_conn reached" now and then, and one
     failed fetch shouldn't fail a firmware build. A 4xx fails at once."""
+    if offline:
+        raise SystemExit(f"offline build needs {url}, but {dest} is not cached")
     print(f"+ download {url}", flush=True)
     req = urllib.request.Request(url, headers={"User-Agent": "wled-studio"})
     for attempt in range(1, attempts + 1):
@@ -84,7 +98,8 @@ def tool_version(cmd: list[str]) -> str:
         return f"unavailable ({e.__class__.__name__})"
 
 
-def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None, origin_remote: bool = True) -> None:
+def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None, origin_remote: bool = True,
+             offline: bool = False) -> None:
     """Clone (or reuse) dest at exactly `commit`, with a clean tree.
 
     autocrlf: None keeps the host's git default (Git for Windows ships `true`);
@@ -98,6 +113,8 @@ def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None, or
     """
     remote = "origin" if origin_remote else "upstream"
     if not (dest / ".git").exists():
+        if offline:
+            raise SystemExit(f"offline build needs a cached checkout at {dest}")
         dest.mkdir(parents=True, exist_ok=True)
         run(["git", "init", "-q"], cwd=dest)
         run(["git", "remote", "add", remote, repo], cwd=dest)
@@ -109,7 +126,11 @@ def checkout(repo: str, commit: str, dest: Path, autocrlf: str | None = None, or
         run(["git", "config", "core.autocrlf", autocrlf], cwd=dest)
         # renormalise the working tree for the new setting
         run(["git", "rm", "-q", "--cached", "-r", "--ignore-unmatch", "."], cwd=dest)
-    run(["git", "fetch", "-q", "--depth", "1", remote, commit], cwd=dest)
+    if not offline:
+        run(["git", "fetch", "-q", "--depth", "1", remote, commit], cwd=dest)
+    elif subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=dest,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+        raise SystemExit(f"offline checkout {dest} does not contain pinned commit {commit}")
     run(["git", "-c", "advice.detachedHead=false", "checkout", "-q", "--force", commit], cwd=dest)
     run(["git", "clean", "-q", "-fdx", "-e", ".pio", "-e", "node_modules"], cwd=dest)
     head = run(["git", "rev-parse", "HEAD"], cwd=dest, capture=True)
@@ -327,6 +348,8 @@ def main() -> int:
     ap.add_argument("--label", default=None, help="extra label for the output dir")
     ap.add_argument("--clean", action="store_true",
                     help="remove the previous build output first, so every object is compiled anew")
+    ap.add_argument("--offline", action="store_true",
+                    help="prove a rebuild from cached git/package inputs; fail instead of fetching")
     ap.add_argument("--usermod", type=Path, action="append", default=[],
                     help="a local usermod folder to add to the build (repeatable)")
     ap.add_argument("--autocrlf", choices=["true", "false", "input"], default=None,
@@ -345,13 +368,23 @@ def main() -> int:
     wled = work / "wled"
     autocrlf = args.autocrlf or pins.get("checkout", {}).get("autocrlf")
     checkout(pins["wled"]["repo"], pins["wled"]["commit"], wled, autocrlf,
-             pins.get("checkout", {}).get("origin_remote", True))
+             pins.get("checkout", {}).get("origin_remote", True), args.offline)
 
     # 2. the vendor's override at its pinned commit, with unpinned usermods pinned
     ov = pins["override"]
     raw = ov["repo"].replace("https://github.com/", "https://raw.githubusercontent.com/")
     ov_src = out / "platformio_override.original.ini"
-    download(f"{raw}/{ov['commit']}/{ov['path']}", ov_src)
+    ov_url = f"{raw}/{ov['commit']}/{ov['path']}"
+    ov_source = out / "platformio_override.original.source.json"
+    if args.offline:
+        if not ov_src.exists() or not ov_source.exists():
+            raise SystemExit(f"offline build needs cached override {ov_src} and its provenance")
+        source = json.loads(ov_source.read_text(encoding="utf-8"))
+        if source.get("url") != ov_url or source.get("sha256") != sha256(ov_src):
+            raise SystemExit("offline override cache does not match the pinned source")
+    else:
+        download(ov_url, ov_src)
+        ov_source.write_text(json.dumps({"url": ov_url, "sha256": sha256(ov_src)}, indent=1) + "\n")
     url_pins = pins.get("pins", {})
     override, hits_ov = apply_pins(ov_src.read_text(encoding="utf-8"), url_pins)
     override = add_usermods(override, pins["env"], args.usermod)
@@ -377,12 +410,42 @@ def main() -> int:
     env.setdefault("PLATFORMIO_CORE_DIR", str(work / "pio-core"))
     # WLED's UI build needs no npm install scripts (66 packages would run theirs)
     env.setdefault("NPM_CONFIG_IGNORE_SCRIPTS", "true")
+    if args.offline:
+        env["HTTP_PROXY"] = env["HTTPS_PROXY"] = env["http_proxy"] = env["https_proxy"] = "http://127.0.0.1:9"
+        env["ALL_PROXY"] = env["all_proxy"] = "socks5://127.0.0.1:9"
+        env["NO_PROXY"] = env["no_proxy"] = ""
+        env["NPM_CONFIG_OFFLINE"] = "true"
+        env["GIT_ALLOW_PROTOCOL"] = "file"
 
     # 4. build, with libraries resolved afresh (a cached branch checkout would hide the pins)
-    shutil.rmtree(wled / ".pio" / "libdeps" / pins["env"], ignore_errors=True)
-    if args.clean:
+    pins_for_deps = {**pins, "extra_usermods": [p.resolve().as_posix() for p in args.usermod]}
+    deps_hash = dep_fingerprint(pins_for_deps, override, pio_text)
+    deps_marker = wled / ".pio" / "libdeps" / pins["env"] / ".wled-studio-deps.json"
+    if args.offline:
+        try:
+            cached_deps = json.loads(deps_marker.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise SystemExit("offline build has no verified PlatformIO dependency cache") from None
+        if cached_deps.get("fingerprint") != deps_hash:
+            raise SystemExit("offline PlatformIO dependency cache does not match the pinned inputs")
+    if not args.offline:
+        # Fresh online builds must resolve libraries from their pinned URLs. An offline proof
+        # deliberately uses the last resolved, pinned tree instead of erasing the only cache.
+        shutil.rmtree(wled / ".pio" / "libdeps" / pins["env"], ignore_errors=True)
+    if args.clean or args.offline:
         shutil.rmtree(wled / ".pio" / "build" / pins["env"], ignore_errors=True)
-    run([sys.executable, "-m", "platformio", "run", "-e", pins["env"], "-d", str(wled)], env=env)
+    try:
+        run([sys.executable, "-m", "platformio", "run", "-e", pins["env"], "-d", str(wled)], env=env)
+    except subprocess.CalledProcessError:
+        if args.offline:
+            raise SystemExit(
+                "offline build failed: the cached PlatformIO checkout is incomplete; "
+                "run this target once online to populate every package and framework library"
+            ) from None
+        raise
+    if not args.offline:
+        deps_marker.parent.mkdir(parents=True, exist_ok=True)
+        deps_marker.write_text(json.dumps({"fingerprint": deps_hash, "built": True}, indent=1) + "\n")
 
     build_dir = wled / ".pio" / "build" / pins["env"]
     for f in ("firmware.bin", "firmware.elf"):
@@ -422,6 +485,7 @@ def main() -> int:
         "host": host,
         "toolchain_host": toolchain_host(),
         "in_container": bool(os.environ.get("WLED_STUDIO_CONTAINER")),
+        "offline": args.offline,
         "python": sys.version.split()[0],
         "platformio": tool_version([sys.executable, "-m", "platformio", "--version"]),
         "node": tool_version(["node", "--version"]),
@@ -443,7 +507,7 @@ def main() -> int:
     if ref:
         ref_bin = out / "reference.bin"
         if not ref_bin.exists() or sha256(ref_bin) != ref["sha256"]:
-            download(ref["url"], ref_bin)
+            download(ref["url"], ref_bin, offline=args.offline)
         if sha256(ref_bin) != ref["sha256"]:
             raise SystemExit("reference image does not match its pinned sha256")
         report["reference_sha256"] = ref["sha256"]
