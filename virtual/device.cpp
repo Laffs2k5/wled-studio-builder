@@ -77,12 +77,49 @@ EXPORT int virtual_device_boot(const char* lengths, int rgbw, int boot_preset) {
 EXPORT void virtual_loop(uint32_t ms) {
   now_ms = ms;
   if (strlen(settingsPIN) > 0 && correctPIN && millis() - lastEditTime > PIN_TIMEOUT) correctPIN = false;
+  if (realtimeMode && millis() > realtimeTimeout) exitRealtime();
   handleTransitions();
   for (Usermod* m : usermods()) m->loop();
   handleNightlight();
   if (!presetNeedsSaving()) handlePlaylist();
   handlePresets();
   if (!offMode || strip.isOffRefreshRequired() || strip.needsUpdate()) strip.service();
+}
+
+/** Apply one DDP packet as WLED's UDP/E1.31 path does. Returns zero for rejected/invalid input
+ *  and one for a packet whose pixels were accepted. */
+EXPORT int virtual_ddp(const uint8_t* packet, int len) {
+  constexpr int HEADER = 10;
+  constexpr uint8_t PUSH = 0x01, QUERY = 0x02, REPLY = 0x04, STORAGE = 0x08, TIME = 0x10;
+  static bool seen_push = false;
+  if (packet == nullptr || len < HEADER) return 0;
+  const uint8_t destination = packet[3];
+  if (destination == 246 || destination == 250 || destination == 251) return 0;
+  if (packet[0] & (QUERY | REPLY)) return 0;
+  const bool push = packet[0] & PUSH;
+  if (!push && (packet[0] & STORAGE)) return 0;
+  const unsigned channels = ((packet[2] & 0x38) >> 3) == 3 ? 4 : 3;
+  const int data_at = HEADER + ((packet[0] & TIME) ? 4 : 0);
+  const unsigned data_len = (unsigned(packet[8]) << 8) | packet[9];
+  if (data_at > len || data_len > unsigned(len - data_at) || data_len % channels) return 0;
+  uint32_t offset = (uint32_t(packet[4]) << 24) | (uint32_t(packet[5]) << 16)
+    | (uint32_t(packet[6]) << 8) | packet[7];
+  unsigned first = offset / channels + DMXAddress / channels;
+  if (realtimeMode != REALTIME_MODE_DDP) seen_push = false;
+  realtimeLock(realtimeTimeoutMs, REALTIME_MODE_DDP);
+  const unsigned count = data_len / channels;
+  if (!realtimeOverride) {
+    for (unsigned i = 0, p = 0; i < count; i++, p += channels)
+      strip.setRealtimePixelColor(first + arlsOffset + i,
+        RGBW32(packet[data_at + p], packet[data_at + p + 1], packet[data_at + p + 2],
+          channels == 4 ? packet[data_at + p + 3] : 0));
+  }
+  seen_push |= push;
+  if (!seen_push || push) {
+    if (useMainSegmentOnly) strip.trigger();
+    else strip.show();
+  }
+  return 1;
 }
 
 /** WLED's JSON answers, as text: 0 /json/state, 1 /json/eff, 2 /json/fxdata. nullptr when the

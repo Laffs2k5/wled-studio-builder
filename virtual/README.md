@@ -28,7 +28,8 @@ PREVIEW_DIR=/tmp/virtual node --test <a usermod's frame tests>     # the same AP
   in WebAssembly.
 - `glue.cpp` is the rest of the link: a **virtual bus** per output that keeps the pixels, the
   sound source, WLED's JSON buffer lock without the ESP32 mutex, and stand-ins (no fonts, plain
-  memory; no UDP sync, realtime input, NTP or HTTP-in-JSON). Files live in an in-memory file
+  memory; no UDP sync, other realtime input, NTP or HTTP-in-JSON; DDP is accepted by
+  `server/`). Files live in an in-memory file
   system (`stub/Arduino.h`, `MemFS`).
 - `api.cpp` is the effect preview's C API (`preview_*`), so the same tests run on the stand-in
   preview and on the real engine, plus `virtual_boot` and `virtual_output` (after brightness and
@@ -100,8 +101,10 @@ or uploaded are saved to `DATA_DIR` once a second, and read back at the next sta
 fresh device. What a twin doesn't have: WLED's config code (`POST /json/cfg` answers 501;
 `/cfg.json` is an uploaded one or a short description of the twin), firmware updates (`/update`
 refuses: a twin runs the firmware it was built from), its web UI and settings pages (`/` is a
-small live-view page), the network (sync, realtime input such as DDP, MQTT, Alexa), 2D matrices
-and a real sound input (sound-reactive effects get the simulated sound).
+small live-view page), the rest of the network side (sync, realtime protocols other than DDP,
+MQTT, Alexa), 2D matrices and a real sound input (sound-reactive effects get the simulated
+sound). DDP on UDP 4048 uses WLED's realtime pixels, honours RGB/RGBW offsets and the push flag,
+and returns to WLED's own effect after the normal realtime timeout.
 
 `Dockerfile` builds the device as an image: the twin of the pinned firmware (default QuinLED's
 16.0.1 for the Dig-Next-2, its effect flags), optionally with usermods as a named build context

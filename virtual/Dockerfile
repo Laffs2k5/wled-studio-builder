@@ -85,7 +85,7 @@ USER device
 # DATA_DIR keeps the device's files (presets, palettes) between restarts: mount a volume there,
 # writable by uid 10001. The settings PIN, if any, comes from a file (PIN_FILE): a secret.
 ENV VIRTUAL_DIR=/twin DATA_DIR=/data PORT=8080 HOST=0.0.0.0
-EXPOSE 8080
+EXPOSE 8080 4048/udp
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD ["node", "-e", "fetch('http://127.0.0.1:8080/json/info').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 ENTRYPOINT ["node", "/app/server.mjs"]

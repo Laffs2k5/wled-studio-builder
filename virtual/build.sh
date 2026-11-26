@@ -39,7 +39,7 @@ done
 em++ "${objs[@]}" -O2 "${link[@]}" \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=1048576 \
   -sERROR_ON_UNDEFINED_SYMBOLS=1 -Wl,--error-limit=0 \
-  -sEXPORTED_FUNCTIONS=_virtual_boot,_virtual_output,_preview_setup,_preview_effect_count,_preview_effect_name,_preview_effect_metadata,_preview_select,_preview_set,_preview_length,_preview_frame,_preview_audio,_preview_palette_names,_virtual_device_boot,_virtual_loop,_virtual_json,_virtual_post_state,_virtual_ws_pushes,_virtual_live,_virtual_file_write,_virtual_file_read,_virtual_file_list,_virtual_file_writes,_virtual_info,_virtual_palette_names,_virtual_set_pin,_virtual_unlocked,_virtual_lock,_malloc,_free \
+  -sEXPORTED_FUNCTIONS=_virtual_boot,_virtual_output,_preview_setup,_preview_effect_count,_preview_effect_name,_preview_effect_metadata,_preview_select,_preview_set,_preview_length,_preview_frame,_preview_audio,_preview_palette_names,_virtual_device_boot,_virtual_loop,_virtual_ddp,_virtual_json,_virtual_post_state,_virtual_ws_pushes,_virtual_live,_virtual_file_write,_virtual_file_read,_virtual_file_list,_virtual_file_writes,_virtual_info,_virtual_palette_names,_virtual_set_pin,_virtual_unlocked,_virtual_lock,_malloc,_free \
   -sEXPORTED_RUNTIME_METHODS=UTF8ToString,stringToNewUTF8,HEAPU8,HEAPU32,HEAP32 \
   -o "$out/virtual.mjs"
 rm -rf "$out/obj"

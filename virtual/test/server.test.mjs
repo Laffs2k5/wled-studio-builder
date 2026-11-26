@@ -4,6 +4,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import dgram from "node:dgram";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,13 +16,14 @@ const pinFile = path.join(tmp, "pin");
 const dataDir = path.join(tmp, "data");
 fs.writeFileSync(pinFile, "4321\n");
 const PORT = 18000 + Math.floor(Math.random() * 1000);
+const DDP_PORT = PORT + 1;
 const B = `http://127.0.0.1:${PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let proc;
 
 async function start() {
   proc = spawn(process.execPath, [server], {
-    env: { ...process.env, VIRTUAL_DIR: dir, PORT: String(PORT), HOST: "127.0.0.1", LEDS: "12,8", NAME: "Test twin",
+    env: { ...process.env, VIRTUAL_DIR: dir, PORT: String(PORT), DDP_PORT: String(DDP_PORT), HOST: "127.0.0.1", LEDS: "12,8", NAME: "Test twin",
            PIN_FILE: pinFile, DATA_DIR: dataDir },
     stdio: ["ignore", "pipe", "inherit"],
   });
@@ -152,4 +154,32 @@ test("the device's files outlast a restart", { skip: !dir && "no VIRTUAL_DIR" },
   const p = await get("/presets.json");
   assert.equal(p["22"].n, "Fire");
   assert.equal(p["40"].n, "Saved here");
+});
+
+test("DDP writes the live view and returns to WLED after it stops", { skip: !dir && "no VIRTUAL_DIR" }, async () => {
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
+  ws.binaryType = "arraybuffer";
+  const frames = [];
+  ws.onmessage = (e) => { if (typeof e.data !== "string") frames.push(e.data); };
+  await new Promise((r) => (ws.onopen = r));
+  ws.send('{"lv":true}');
+  const pixels = Buffer.alloc(20 * 3);
+  pixels[0] = 255;
+  const packet = Buffer.concat([
+    Buffer.from([0x41, 1, 0x0b, 1]),
+    Buffer.from([0, 0, 0, 0]),
+    Buffer.from([0, pixels.length]),
+    pixels,
+  ]);
+  const udp = dgram.createSocket("udp4");
+  await new Promise((resolve, reject) => udp.send(packet, DDP_PORT, "127.0.0.1", (e) => e ? reject(e) : resolve()));
+  udp.close();
+  for (let i = 0; i < 20 && !frames.some((f) => new Uint8Array(f)[2] > 200); i++) await sleep(50);
+  const live = new Uint8Array(frames.findLast((f) => new Uint8Array(f)[2] > 200));
+  assert.equal(live.length, 2 + 20 * 3);
+  assert.ok(live[2] > 200 && live[3] < 10 && live[4] < 10);
+  await sleep(2600);
+  const restored = new Uint8Array(frames.at(-1));
+  assert.ok(restored[2] > 200 && restored[3] > 100, "WLED resumes its own effect after DDP times out");
+  ws.close();
 });

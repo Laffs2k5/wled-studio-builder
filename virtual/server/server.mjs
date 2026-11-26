@@ -11,7 +11,8 @@
  *
  * Environment:
  *   VIRTUAL_DIR   the twin: virtual.mjs, virtual.wasm and twin.json (required)
- *   PORT, HOST    where to listen (8080, 0.0.0.0)
+ *   PORT, HOST    where HTTP/websocket listen (8080, 0.0.0.0)
+ *   DDP_PORT      where DDP listens (4048; on HOST)
  *   LEDS          LEDs per output, comma-separated ("30"); e.g. "124,126" for two outputs
  *   RGBW          1 for RGBW LEDs (default), 0 for RGB
  *   NAME          the device's name ("Virtual WLED")
@@ -21,12 +22,14 @@
  *   DATA_DIR      where the device's files (presets.json, palettes) are kept between restarts
  *                 (none: in memory only)
  *
- * What it doesn't do: the network side of WLED (sync, realtime input, MQTT, Alexa), its settings
+ * It accepts DDP realtime input on UDP 4048. It doesn't do the rest of WLED's network side
+ * (sync, other realtime protocols, MQTT, Alexa), its settings
  * pages and web UI (it has a small page of its own at /), and firmware updates (a twin runs the
  * firmware it was built from).
  */
 import fs from "node:fs";
 import http from "node:http";
+import dgram from "node:dgram";
 import path from "node:path";
 import crypto from "node:crypto";
 
@@ -38,6 +41,7 @@ if (!dir) {
 }
 const cfg = {
   port: Number(env.PORT || 8080),
+  ddpPort: Number(env.DDP_PORT || 4048),
   host: env.HOST || "0.0.0.0",
   leds: (env.LEDS || "30").replace(/\s/g, ""),
   rgbw: env.RGBW !== "0",
@@ -356,6 +360,20 @@ const timer = setInterval(() => {
   }
 }, 5);
 
+const ddp = dgram.createSocket("udp4");
+ddp.on("message", (packet) => {
+  const p = M._malloc(Math.max(1, packet.length));
+  M.HEAPU8.set(packet, p);
+  try { M._virtual_ddp(p, packet.length); } finally { M._free(p); }
+});
+ddp.on("error", (e) => {
+  console.error("virtual DDP:", e.message);
+  process.exit(1);
+});
+ddp.bind(cfg.ddpPort, cfg.host, () => {
+  console.log(`virtual DDP on ${cfg.host}:${ddp.address().port}`);
+});
+
 const HOME = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Virtual WLED</title><style>
 :root{color-scheme:light dark;--bg:#fff;--fg:#222;--muted:#666}
@@ -381,11 +399,13 @@ const server = http.createServer((req, res) => {
 server.on("upgrade", upgrade);
 server.listen(cfg.port, cfg.host, () => {
   console.log(`virtual WLED "${cfg.name}" on ${cfg.host}:${cfg.port}: ${leds} LEDs (${cfg.leds}), ` +
-    `${twin.firmware || "WLED " + (twin.ver || "?")}${cfg.pin ? ", PIN set" : ""}${cfg.dataDir ? ", files in " + cfg.dataDir : ""}`);
+    `${twin.firmware || "WLED " + (twin.ver || "?")}` +
+    `${cfg.pin ? ", PIN set" : ""}${cfg.dataDir ? ", files in " + cfg.dataDir : ""}`);
 });
 function stop() {
   clearInterval(timer);
   try { saveFiles(); } catch { /* best effort */ }
+  ddp.close();
   server.close();
   for (const s of sockets) s.destroy();
   process.exit(0);

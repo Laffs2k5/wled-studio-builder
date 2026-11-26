@@ -124,8 +124,38 @@ namespace virtualwled { uint32_t ws_pushes = 0; }
 void sendDataWs(AsyncWebSocketClient*) { virtualwled::ws_pushes++; }
 void notify(byte, bool) {}
 void sendSysInfoUDP() {}
-void realtimeLock(uint32_t, byte) {}
-void exitRealtime() {}
+void realtimeLock(uint32_t timeoutMs, byte mode) {
+  if (!realtimeMode && !realtimeOverride) {
+    if (useMainSegmentOnly) {
+      Segment& main = strip.getMainSegment();
+      main.clear();
+      main.freeze = true;
+      if (bri == 0)
+        for (size_t i = 0; i < strip.getSegmentsNum(); i++) strip.getSegment(i).freeze = true;
+    } else {
+      strip.fill(BLACK);
+    }
+    if (briT == 0) strip.setBrightness(briLast, true);
+  }
+  if (realtimeTimeout != UINT32_MAX)
+    realtimeTimeout = (timeoutMs == 255001 || timeoutMs == 65000) ? UINT32_MAX : millis() + timeoutMs;
+  realtimeMode = mode;
+  if (!realtimeOverride && arlsForceMaxBri) strip.setBrightness(255, true);
+}
+void exitRealtime() {
+  if (!realtimeMode) return;
+  if (realtimeOverride == REALTIME_OVERRIDE_ONCE) realtimeOverride = REALTIME_OVERRIDE_NONE;
+  strip.setBrightness(bri, true);
+  realtimeTimeout = 0;
+  realtimeMode = REALTIME_MODE_INACTIVE;
+  if (useMainSegmentOnly) {
+    strip.getMainSegment().freeze = false;
+    strip.trigger();
+  } else {
+    strip.show();
+  }
+  updateInterfaces(CALL_MODE_WS_SEND);
+}
 void setTimeFromAPI(uint32_t) {}
 bool handleSet(AsyncWebServerRequest*, const String&, bool) { return false; }
 
